@@ -3,7 +3,7 @@ This is a replacement firmware for the XY-Clock with Wifi (and similar variants)
 * No need to install mobile app. Functionality controlled from ESP8285 on the clock.
 * Easy setup of connection to Wifi network using temporary access point.
 * Synchronisation with a Network Time Protocol server (NTP) to get the correct time.
-* After a power failure it should be able to restore the correct time without any user intervention (saved Wifi credentials and timezone).
+* After a power failure it should be able to restore the correct time without any user intervention (saved Wifi credentials with specified timezone).
 
 Note that the ability to change the timezone is on the to do list. For the time being you will need to look at the available list of timezones in UpdateTimeTask.h and change the line updateTimeTask->setTimeZone("BST") to match your target timezone. Since the list is somewhat limited at the moment there is a decent chance you may need to add your timezone.
 
@@ -20,6 +20,7 @@ Since this is early days in the development of the firmware there is still quite
  
 ## Current Issues
 * The TM1650 Segmented LED display has a slight flicker. Attempts at using different TM16xx libraries have been made but there appears to be some sort of conflict with the current libraries preventing them from working properly.
+* The TM1650 ColonOn function appears to also highlight the two points at the bottom of the display. This will have something to do with the bitmap settings in the library.
 
 ## Using the new Firmware
 * When using it for the first time it will create a Wifi access point called XY-Clock. Connect to this and select the wifi network and enter the password. It will then connect to the Wifi Network and sync the time with the pool.ntp.org Network Time Protocol server.
@@ -54,7 +55,7 @@ You need to connect the FTDI to the board in the following way:
 | 5    | CHIP_EN  |      |
 | 6    | VCC      | VCC  |
 
-When you want to flash the ESP8285 chip you need to connect GPIO0 to GND before you connect the FTDI programmer to the computer (before you plug it into the USB port). Once the new firmware has been uploaded disconnect GPIO0 from GND and reset the device. You can just unplug the FTDI from the USB port and plug it back in which will resupply power to the board and allow you to use the Serial Monitor to debug it. You may want to uncomment the delay code in the Arduino sketch startup code to give your computer time to connect to the serial output.
+When you want to flash the ESP8285 chip you need to connect GPIO0 to GND before you connect the FTDI programmer to the computer (before you plug it into the USB port). You can then flash the new firmware on to the board. Once the new firmware has been uploaded disconnect GPIO0 from GND and reset the device to run it. You can just unplug the FTDI from the USB port and plug it back in which will resupply power to the board and allow you to use the Serial Monitor to debug it. You may want to uncomment the delay code in the Arduino sketch startup code to give your computer time to connect to the serial output.
 
 ![image](./Documentation/Images/Flashing-wifi-clock.jpg)
 
