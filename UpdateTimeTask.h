@@ -3,33 +3,43 @@
 // Need to install Timezone by Jack Christensen
 #include <Timezone.h>    // https://github.com/JChristensen/Timezone
 
-extern bool readyForTimeUpdate = false;
-
-// Cooperative task to update the time
-class UpdateTimeTask: public LeanTask {
+class UpdateTimeTask {
     public:
-        UpdateTimeTask(bool _enabled = false, unsigned long _interval = 0) : LeanTask (_enabled, _interval) {}
+        UpdateTimeTask() {
+
+        }
 
         volatile uint16_t displayNumber = 0;
 
-        void setTimeZone(String timeZoneName) {
+        void setTimezone(String timeZoneName) {
             Serial.printf("Timezone set to %s", timeZoneName);
             Serial.println();
             timezone = createTimeZone(timeZoneName);
         }
 
-    protected:
+        int getDayOfWeek() {
+            time_t timezoneTime = timezone->toLocal(now());
+            tm timeParts = getDateTimeByParams(timezoneTime);
+            return timeParts.tm_wday;            
+        }
+
+        tm getTimeParts() {
+            time_t timezoneTime = timezone->toLocal(now());
+            tm timeParts = getDateTimeByParams(timezoneTime);
+            return timeParts;
+        }
+
         void loop() {
             bool hasHourChanged = (lastHour != hour());
             bool hasMinutesChanged = (lastMinute != minute());
-
+            
             // Update the display time when the time changes
             if (hasHourChanged || hasMinutesChanged) {
                 // Get the time and convert it to the current timezone
                 //time_t timezoneTime = UK.toLocal(now());
                 time_t timezoneTime = timezone->toLocal(now());
                 tm timezoneTimeParts = getDateTimeByParams(timezoneTime);
-
+                
                 int displayHours = timezoneTimeParts.tm_hour;
                 int displayMinutes = timezoneTimeParts.tm_min;
                 displayNumber = displayHours * 100 + displayMinutes;
@@ -59,6 +69,10 @@ class UpdateTimeTask: public LeanTask {
         }
 
         Timezone* createTimeZone(String timeZoneName) {
+            Serial.print("Creating timezone: ");
+            Serial.print(timeZoneName);
+            Serial.println();
+
             if (timeZoneName == "AEDT") {
                 // Australia Eastern Time Zone (Sydney, Melbourne)
                 TimeChangeRule aEDT = {"AEDT", First, Sun, Oct, 2, 660};    // UTC + 11 hours
@@ -119,12 +133,16 @@ class UpdateTimeTask: public LeanTask {
                 return new Timezone(usMST);
             }
             
-            if (timeZoneName == "AZT") {
+            if (timeZoneName == "PST") {
                 // US Pacific Time Zone (Las Vegas, Los Angeles)
                 TimeChangeRule usPDT = {"PDT", Second, Sun, Mar, 2, -420};
                 TimeChangeRule usPST = {"PST", First, Sun, Nov, 2, -480};
                 return new Timezone(usPDT, usPST);
             }
+            
+            // UTC
+            TimeChangeRule utcRule = {"UTC", Last, Sun, Mar, 1, 0};     // UTC
+            return new Timezone(utcRule);
         }
 };
 
