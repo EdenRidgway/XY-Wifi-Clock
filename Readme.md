@@ -1,16 +1,17 @@
 # XY Wifi Clock Replacement Firmware
-This is a replacement firmware for the XY-Clock with Wifi (and similar variants) found at https://www.aliexpress.com/item/1005002686302823.html and https://www.aliexpress.com/item/1005002941223785.html that eliminates the need to use the Sinilink app to control it. It is still early days in the development of this, so contributions and improvements are welcome. The pbjective has been to get a working end to end replacement for the current firmware that has the following features:
+This is a replacement firmware for the XY-Clock with Wifi (and similar variants) found at https://www.aliexpress.com/item/1005002686302823.html and https://www.aliexpress.com/item/1005002941223785.html that eliminates the need to use the Sinilink app to control it. It is still early days in the development of this, so contributions and improvements are welcome. The objective has been to get a working end to end replacement for the current firmware that has the following features:
 * No need to install mobile app. Functionality controlled from ESP8285 on the clock.
 * Easy setup of connection to Wifi network using temporary access point.
 * Synchronisation with a Network Time Protocol server (NTP) to get the correct time.
+* A configuration web page that allows you to:
+  * Change the timezone and device name
+  * Setup up to 6 alarms
 * After a power failure it should be able to restore the correct time without any user intervention (saved Wifi credentials with specified timezone).
 
 Note that the ability to change the timezone is on the to do list. For the time being you will need to look at the available list of timezones in UpdateTimeTask.h and change the line updateTimeTask->setTimezone("BST") to match your target timezone. Since the list is somewhat limited at the moment there is a decent chance you may need to add your timezone.
 
 ## To Do
 Since this is early days in the development of the firmware there is still quite a bit to do, including the following in order of priority:
- - [x] Add a configuration page that allows the user to change the timezone.
- - [x] Add the ability to add/edit alarms
  - [ ] Add functionality to the K_UP,  K_DOWN and K_SET buttons
  - [ ] Use the LEDs to indicate state
  - [ ] Configure different alarm sounds
