@@ -9,9 +9,6 @@
 #include "UpdateTimeTask.h"
 UpdateTimeTask updateTimeTask;
 
-#include "NtpUpdateTask.h"
-NtpUpdateTask ntpUpdateTask;
-
 const int BUTTON_UP = 10;
 const int BUTTON_DOWN = 9;
 const int BUTTON_SET = 16;
@@ -29,6 +26,46 @@ const int SCL_PIN = 12;
 const int SDA_PIN = 13;
 
 const int BUZZER_PIN = 5;
+// Need to install NTPClient by Fabrice Weinberg
+// Source for NTP with timezones: https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
+#include <WiFiUdp.h>
+#include <NTPClient.h>
+
+// Needs the time library: https://github.com/PaulStoffregen/Time
+#include <time.h>
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000 * 30);  // Use the pool.ntp.org an update it every 30 minutes
+
+//extern bool readyForNtp = false;
+
+// Task that runs as a separate "thread" to display the time on the TM1650 Segmented display
+class NtpUpdateTask {
+    public:
+        NtpUpdateTask() {
+            
+        }
+        
+        void loop() {
+            updateTime();
+        }
+
+        void initialise() {
+            timeClient.begin();
+        }
+
+        void updateTime() {
+            if (timeClient.update()) {
+                Serial.println("NTP Time updated");
+
+                unsigned long epoch = timeClient.getEpochTime();
+                setTime(epoch);
+                yield();
+            }
+        }
+};
+
+NtpUpdateTask ntpUpdateTask;
 
 // Track the state of the clock setup
 enum ClockState {

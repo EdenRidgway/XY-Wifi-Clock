@@ -99,7 +99,6 @@ class TM1650 {
 	void ClearDisplay( void );
 	void WriteNum( uint16_t num );
 	void WriteNum( uint16_t num, uint8_t position );
-
 };
 
 #endif
