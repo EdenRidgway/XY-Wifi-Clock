@@ -40,7 +40,8 @@ You will need to install support for the ESP8266 chip in the Arduino IDE as well
 * ArduinoJson: https://github.com/bblanchon/ArduinoJson
 * NTPClient: https://github.com/arduino-libraries/NTPClient
 * Time: https://github.com/PaulStoffregen/Time
-* Timezone by Jack Christensen: https://github.com/JChristensen/Timezone
+* Adafruit_GFX by Adafruit: https://github.com/adafruit/Adafruit-GFX-Library
+* TM16xx LEDs and Buttons by Maxint: https://github.com/maxint-rd/TM16xx
 
 ## Reprogramming the Wifi Clock
 You can use an FTDI programmer and empty pins at the top left of the board to reprogram the ESP8285. You can use breadboard jumper wires to connect it up to the FTDI programmer. Make sure you put the FTDI programmer in 3.3V mode (you will destroy the chip if the FTDI is in 5V mode). The layout of the pins on the PCB are as follows:

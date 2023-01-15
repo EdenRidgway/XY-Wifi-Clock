@@ -174,6 +174,7 @@ class Config {
     private:
         String deviceName;
         String timezone;
+        uint8_t brightness;
 
     public:
         Alarm alarms[6]= { Alarm(), Alarm(), Alarm(), Alarm(), Alarm(), Alarm() };
@@ -186,12 +187,22 @@ class Config {
             timezone = value;
         }
 
+        void setBrightness(uint8_t value) {
+            if (value > 7) value = 7;
+            if (value < 1) value = 1;
+            brightness = value;
+        }
+
         String getDeviceName() {
             return deviceName;
         }
 
         String getTimezone() {
             return timezone;
+        }
+
+        uint8_t getBrightness() {
+            return brightness;
         }
 };
 
@@ -208,24 +219,18 @@ void setup() {
     Serial.println("Starting XY-Clock");
     Serial.println("Built on " __DATE__ " at " __TIME__);
     
-    // Wire.begin(SDA_PIN, SCL_PIN);
-    // Wire.setClock(400000);
-    matrix.setIntensity(3);         // Use a value between 0 and 7 for brightness
+    matrix.setIntensity(4);         // Use a value between 1 and 7 for brightness
     matrix.fillScreen(LOW);         // Clear the matrix
     matrix.write();                 // Send the memory bitmap to the display
 
     pinMode(BUZZER_PIN, OUTPUT);
 
-    // pinMode(BUTTON_UP, INPUT);
-    // pinMode(BUTTON_DOWN, INPUT);
-    // pinMode(BUTTON_SET, INPUT);
+    //pinMode(BUTTON_UP, INPUT);
+    //pinMode(BUTTON_DOWN, INPUT);
+    //pinMode(BUTTON_SET, INPUT);
 
     Serial.println("Setting up TM1650 Display");
     
-    // Disp4Seg.Init();
-    // Disp4Seg.SetBrightness(displayBrightness);
-    // Disp4Seg.DisplayON();
-
     wifiManager.setDebugOutput(true);
     //wifiManager.setConfigPortalBlocking(false);
     //wifiManager.setSaveParamsCallback(saveWifiManagerParamsCallback);
@@ -280,14 +285,6 @@ void saveWifiManagerParamsCallback() {
     currentClockState = DisplayingTime;
 }
 
-// Sets the bottom dot states
-// void setBottomDots(bool dot0, bool dot1, bool dot2, bool dot3) {
-//     Disp4Seg.SetDot(0, dot0);
-//     Disp4Seg.SetDot(1, dot1);
-//     Disp4Seg.SetDot(2, dot2);
-//     Disp4Seg.SetDot(3, dot3);
-// }
-
 // Checks the alarms
 void checkAlarms() {
     for (auto& alarm : config.alarms) {
@@ -315,20 +312,15 @@ void loop() {
 
     switch (currentClockState) {
         case WaitingForWifi:
-            Disp4Seg.setDisplay(new uint8_t[4] { 8,8,8,8 });
-            //Disp4Seg.WriteNum(8888);
+            Disp4Seg.setDisplayToDecNumber(8888);
             break;
 
         case WaitingForNtp:
-            Disp4Seg.setDisplay(new uint8_t[4] { 1,1,1,1 });
-            //Disp4Seg.WriteNum(1111);
+            Disp4Seg.setDisplayToDecNumber(1111);
             break;
 
         case NtpUpdateFailure:
-            Disp4Seg.setDisplay(new uint8_t[4] { 9,9,9,9 });
-            //Disp4Seg.WriteNum(9999);
-            //Disp4Seg.ColonOFF();
-            //setBottomDots(true, true, false, false);
+            Disp4Seg.setDisplayToDecNumber(9999);
             break;
 
         case DisplayingTime:
@@ -344,24 +336,23 @@ void checkButtons() {
     int buttonDownState = digitalRead(BUTTON_DOWN);
     int buttonSetState = digitalRead(BUTTON_SET);
 
-    if (buttonUpState == HIGH) {
-        displayBrightness++;
-        if (displayBrightness > 7) displayBrightness = 7;
+    if (buttonUpState == LOW) {
+        uint8_t displayBrightness = config.getBrightness();
+        config.setBrightness(displayBrightness + 1);
 
-        matrix.setIntensity(displayBrightness);
+        Serial.print("Setting brightness ");
+        Serial.println(config.getBrightness());
+        matrix.setIntensity(config.getBrightness());
     }
 
-    if (buttonDownState == HIGH) {
-        displayBrightness--;
-        if (displayBrightness < 1) displayBrightness = 1;
+    if (buttonDownState == LOW) {
+        uint8_t displayBrightness = config.getBrightness();
+        config.setBrightness(displayBrightness - 1);
 
-        matrix.setIntensity(displayBrightness);
+        Serial.print("Setting brightness ");
+        Serial.println(config.getBrightness());
+        matrix.setIntensity(config.getBrightness());
     }
-
-    // Using the set button to reset the Wifi Settings is only for testing purposes
-    // if (buttonSetState == HIGH) {
-    //     wifiManager.resetSettings();
-    // }
 }
 
 // Displays a spinner
