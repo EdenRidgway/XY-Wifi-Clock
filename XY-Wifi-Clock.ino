@@ -16,14 +16,20 @@ const int BUTTON_SET = 16;
 #include "pitches.h"
 
 // TM1650 Digital Display
-#include <Wire.h>
-#include "TM1650.h"
-
-TM1650 Disp4Seg;
+// Need to install Adafruit_GFX and TM16xx
+#include <Adafruit_GFX.h>
+#include <TM1650.h>
+#include <TM16xxMatrixGFX.h>
 
 // I2C pins
 const int SCL_PIN = 12;
 const int SDA_PIN = 13;
+
+TM1650 Disp4Seg(SDA_PIN, SCL_PIN);
+
+#define MATRIX_NUMCOLUMNS 5
+#define MATRIX_NUMROWS 3
+TM16xxMatrixGFX matrix(&Disp4Seg, MATRIX_NUMCOLUMNS, MATRIX_NUMROWS);    // TM16xx object, columns, rows#
 
 const int BUZZER_PIN = 5;
 // Need to install NTPClient by Fabrice Weinberg
@@ -201,9 +207,12 @@ void setup() {
 
     Serial.println("Starting XY-Clock");
     Serial.println("Built on " __DATE__ " at " __TIME__);
-  
-    Wire.begin(SDA_PIN, SCL_PIN);
-    Wire.setClock(400000);
+    
+    // Wire.begin(SDA_PIN, SCL_PIN);
+    // Wire.setClock(400000);
+    matrix.setIntensity(3);         // Use a value between 0 and 7 for brightness
+    matrix.fillScreen(LOW);         // Clear the matrix
+    matrix.write();                 // Send the memory bitmap to the display
 
     pinMode(BUZZER_PIN, OUTPUT);
 
@@ -212,10 +221,10 @@ void setup() {
     // pinMode(BUTTON_SET, INPUT);
 
     Serial.println("Setting up TM1650 Display");
-
-    Disp4Seg.Init();
-    Disp4Seg.SetBrightness(displayBrightness);
-    Disp4Seg.DisplayON();
+    
+    // Disp4Seg.Init();
+    // Disp4Seg.SetBrightness(displayBrightness);
+    // Disp4Seg.DisplayON();
 
     wifiManager.setDebugOutput(true);
     //wifiManager.setConfigPortalBlocking(false);
@@ -272,12 +281,12 @@ void saveWifiManagerParamsCallback() {
 }
 
 // Sets the bottom dot states
-void setBottomDots(bool dot0, bool dot1, bool dot2, bool dot3) {
-    Disp4Seg.SetDot(0, dot0);
-    Disp4Seg.SetDot(1, dot1);
-    Disp4Seg.SetDot(2, dot2);
-    Disp4Seg.SetDot(3, dot3);
-}
+// void setBottomDots(bool dot0, bool dot1, bool dot2, bool dot3) {
+//     Disp4Seg.SetDot(0, dot0);
+//     Disp4Seg.SetDot(1, dot1);
+//     Disp4Seg.SetDot(2, dot2);
+//     Disp4Seg.SetDot(3, dot3);
+// }
 
 // Checks the alarms
 void checkAlarms() {
@@ -306,17 +315,20 @@ void loop() {
 
     switch (currentClockState) {
         case WaitingForWifi:
-            Disp4Seg.WriteNum(8888);
+            Disp4Seg.setDisplay(new uint8_t[4] { 8,8,8,8 });
+            //Disp4Seg.WriteNum(8888);
             break;
 
         case WaitingForNtp:
-            Disp4Seg.WriteNum(1111);
+            Disp4Seg.setDisplay(new uint8_t[4] { 1,1,1,1 });
+            //Disp4Seg.WriteNum(1111);
             break;
 
         case NtpUpdateFailure:
-            Disp4Seg.WriteNum(9999);
-            Disp4Seg.ColonOFF();
-            setBottomDots(true, true, false, false);
+            Disp4Seg.setDisplay(new uint8_t[4] { 9,9,9,9 });
+            //Disp4Seg.WriteNum(9999);
+            //Disp4Seg.ColonOFF();
+            //setBottomDots(true, true, false, false);
             break;
 
         case DisplayingTime:
@@ -334,22 +346,22 @@ void checkButtons() {
 
     if (buttonUpState == HIGH) {
         displayBrightness++;
-        if (displayBrightness > 5) displayBrightness = 5;
+        if (displayBrightness > 7) displayBrightness = 7;
 
-        Disp4Seg.SetBrightness(displayBrightness);
+        matrix.setIntensity(displayBrightness);
     }
 
     if (buttonDownState == HIGH) {
         displayBrightness--;
         if (displayBrightness < 1) displayBrightness = 1;
 
-        Disp4Seg.SetBrightness(displayBrightness);
+        matrix.setIntensity(displayBrightness);
     }
 
     // Using the set button to reset the Wifi Settings is only for testing purposes
-    if (buttonSetState == HIGH) {
-        wifiManager.resetSettings();
-    }
+    // if (buttonSetState == HIGH) {
+    //     wifiManager.resetSettings();
+    // }
 }
 
 // Displays a spinner
@@ -359,12 +371,12 @@ void displayWaiting() {
   for (uint8_t k = 0; k < 3; k++) {
     for (uint8_t i = 0; i < 4; i++) {
       for (uint8_t j = 1; j < 0x40; j = j << 1) {
-        Disp4Seg.SendDigit(j, i);
+        Disp4Seg.setSegments(j, i);
         delay(50);
         yield();
       }
 
-      Disp4Seg.SendDigit(0, i);
+      Disp4Seg.setSegments(0, i);
     }
   }
 }
@@ -372,9 +384,17 @@ void displayWaiting() {
 
 // Get the time and convert it to the current timezone. Display it on the segment display
 void displayTime() {
-    // Display the current time
-    Disp4Seg.WriteNum(updateTimeTask.displayNumber);
-    Disp4Seg.ColonON();
+	uint8_t digit0 = (updateTimeTask.displayNumber / 1000) % 10;
+	uint8_t digit1 = (updateTimeTask.displayNumber / 100) % 10;
+	uint8_t digit2 = (updateTimeTask.displayNumber / 10) % 10;
+	uint8_t digit3 = updateTimeTask.displayNumber % 10;
+
+    Disp4Seg.setDisplayDigit(digit0, 0);
+    Disp4Seg.setDisplayDigit(digit1, 1);
+    // Add the colon on to the last 2 digits
+    Disp4Seg.setDisplayDigit(digit2, 2, true);
+    Disp4Seg.setDisplayDigit(digit3, 3, true);
+
     yield();
 }
 
