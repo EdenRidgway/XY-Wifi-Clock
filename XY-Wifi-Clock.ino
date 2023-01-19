@@ -89,7 +89,7 @@ WiFiManager wifiManager;
 int displayBrightness = 1;
 
 class Alarm {
-    private:
+    protected:
         byte alarmHour;
         byte alarmMinute;
         byte daysOfWeek = 0;
@@ -143,20 +143,6 @@ class Alarm {
                 tm timeParts = updateTimeTask.getTimeParts();
                 int weekDay = timeParts.tm_wday;
 
-                // Serial.print("Current Week day: ");
-                // Serial.print(timeParts.tm_wday);
-                // Serial.print(" hour: ");
-                // Serial.print(timeParts.tm_hour);
-                // Serial.print(" hour: ");
-                // Serial.println(timeParts.tm_min);
-
-                // Serial.print("Alarm days of week: ");
-                // Serial.print(daysOfWeek);
-                // Serial.print(" hour: ");
-                // Serial.print(alarmHour);
-                // Serial.print(" minute: ");
-                // Serial.println(alarmMinute);
-
                 if (timeParts.tm_hour == alarmHour && timeParts.tm_min == alarmMinute && isForDayOfWeek(timeParts.tm_wday))
                 {
                     Serial.println("Alarm triggered");
@@ -170,14 +156,44 @@ class Alarm {
         }
 };
 
+class BrightnessAlarm: public Alarm {
+    private:
+        uint8_t alarmBrightness = 4;
+
+    public:
+        BrightnessAlarm(uint8_t hour = 0, uint8_t minute = 0, uint8_t brightness = 4) {
+            alarmHour = hour;
+            alarmMinute = minute;
+            alarmBrightness = brightness;
+            daysOfWeek = 255;
+        }
+
+        void setBrightness(uint8_t value) {
+            if (value > 7) value = 7;
+            if (value < 1) value = 1;
+            alarmBrightness = value;
+        }
+    
+        uint8_t getBrightness() {
+            return alarmBrightness;
+        }
+};
+
 class Config {
     private:
         String deviceName;
         String timezone;
-        uint8_t brightness;
 
     public:
         Alarm alarms[6]= { Alarm(), Alarm(), Alarm(), Alarm(), Alarm(), Alarm() };
+        
+        BrightnessAlarm dayBrightnessAlarm;
+        BrightnessAlarm nightBrightnessAlarm;
+
+        Config() {
+            // dayBrightnessAlarm = new BrightnessAlarm(6, 0, 3);
+            // nightBrightnessAlarm = new BrightnessAlarm(20, 0, 6);
+        }
 
         void setDeviceName(String value) {
             deviceName = value;
@@ -187,12 +203,6 @@ class Config {
             timezone = value;
         }
 
-        void setBrightness(uint8_t value) {
-            if (value > 7) value = 7;
-            if (value < 1) value = 1;
-            brightness = value;
-        }
-
         String getDeviceName() {
             return deviceName;
         }
@@ -200,13 +210,10 @@ class Config {
         String getTimezone() {
             return timezone;
         }
-
-        uint8_t getBrightness() {
-            return brightness;
-        }
 };
 
 Config config;
+uint8_t brightness = 4;
 
 #include <ESP8266mDNS.h>
 
@@ -219,10 +226,6 @@ void setup() {
     Serial.println("Starting XY-Clock");
     Serial.println("Built on " __DATE__ " at " __TIME__);
     
-    matrix.setIntensity(4);         // Use a value between 1 and 7 for brightness
-    matrix.fillScreen(LOW);         // Clear the matrix
-    matrix.write();                 // Send the memory bitmap to the display
-
     pinMode(BUZZER_PIN, OUTPUT);
 
     //pinMode(BUTTON_UP, INPUT);
@@ -262,6 +265,11 @@ void setup() {
         Serial.println("Setting timezone");
         updateTimeTask.setTimezone(config.getTimezone());
 
+        // Use a value between 1 and 7 for brightness
+        matrix.setIntensity(config.dayBrightnessAlarm.getBrightness());
+        matrix.fillScreen(LOW);
+        matrix.write();                 // Send the memory bitmap to the display
+
         Serial.print("Setup MDNS ");
 
          // Start the mDNS responder        
@@ -296,7 +304,7 @@ void checkAlarms() {
 }
 
 // Main loop
-void loop() {
+void loop() {    
     server.handleClient();
     yield();
 
@@ -337,21 +345,21 @@ void checkButtons() {
     int buttonSetState = digitalRead(BUTTON_SET);
 
     if (buttonUpState == LOW) {
-        uint8_t displayBrightness = config.getBrightness();
-        config.setBrightness(displayBrightness + 1);
+        brightness++;
+        if (brightness > 7) brightness = 7;
 
         Serial.print("Setting brightness ");
-        Serial.println(config.getBrightness());
-        matrix.setIntensity(config.getBrightness());
+        Serial.println(brightness);
+        matrix.setIntensity(brightness);
     }
 
     if (buttonDownState == LOW) {
-        uint8_t displayBrightness = config.getBrightness();
-        config.setBrightness(displayBrightness - 1);
+        brightness--;
+        if (brightness < 1) brightness = 1;
 
         Serial.print("Setting brightness ");
-        Serial.println(config.getBrightness());
-        matrix.setIntensity(config.getBrightness());
+        Serial.println(brightness);
+        matrix.setIntensity(brightness);
     }
 }
 
@@ -385,7 +393,6 @@ void displayTime() {
     // Add the colon on to the last 2 digits
     Disp4Seg.setDisplayDigit(digit2, 2, true);
     Disp4Seg.setDisplayDigit(digit3, 3, true);
-
     yield();
 }
 

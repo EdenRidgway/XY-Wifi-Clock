@@ -39,6 +39,22 @@
             <option value="UTC">Coordinated Universal Time</option>
         </select><br/><br/>
 		
+		<h3>Brightness Settings</h3>
+		<div id="day-brightness-section">
+			<label>Day Start</label>
+			<select id="day-start" class="hour"></select>
+			<select class="minute"></select>
+			<span style="padding-left: 5px">Bright <input id="day-start-brightness" class="brightness" type="range" min="1" max="7" value="4"/> Dull</span>
+		</div>
+		
+		<div id="night-brightness-section">
+			<label>Night Start</label>
+			<select id="night-start" class="hour"></select>
+			<select class="minute"></select>
+			<span style="padding-left: 5px">Bright <input id="night-start-brightness" class="brightness" type="range" min="1" max="7" value="4"/> Dull</span>
+		</div>
+		
+		<h3>Alarms</h3>
 		<table id="alarms-table" style="width:360px">
 			<thead>
 				<tr>
@@ -79,10 +95,15 @@ var alarmRowTemplate = document.querySelector("#alarms-table tbody tr");
 
 function mockConfigFetch() {
   return Promise.resolve({
-		json: () => Promise.resolve({ deviceName: "XY-Clock", timezone: "BST", alarms: [
-			{ hour: 7, minute: 40, daysOfWeek: [true, true, true, true, true, false, false] },
-			{ hour: 8, minute: 00, daysOfWeek: [false, false, false, false, false, true, true] }
-		]}),
+		json: () => Promise.resolve({ 
+			deviceName: "XY-Clock", timezone: "BST", 
+			dayBrightness: { hour: 06, minute: 0, brightness: 3 },
+			nightBrightness: { hour: 20, minute: 0, brightness: 6 },
+			alarms: [
+				{ hour: 7, minute: 40, daysOfWeek: [true, true, true, true, true, false, false] },
+				{ hour: 8, minute: 00, daysOfWeek: [false, false, false, false, false, true, true] }
+			]
+		})
   })
 }
 
@@ -97,31 +118,56 @@ function displayConfig(config) {
 	document.getElementById("deviceName").value = config.deviceName;
 	document.getElementById("timezone").value = config.timezone;
 	
-	if (!config.alarms) return;
-	
-	for (var i=0; i < config.alarms.length; i++) {
-		var alarm = config.alarms[i];
-		
-		var tr = document.querySelectorAll("#alarms-table tbody tr")[i];
-		
-		tr.querySelector(".hour").value = alarm.hour;
-		tr.querySelector(".minute").value = alarm.minute;
-		tr.querySelector(".mon").checked = alarm.daysOfWeek[0];
-		tr.querySelector(".tue").checked = alarm.daysOfWeek[1];
-		tr.querySelector(".wed").checked = alarm.daysOfWeek[2];
-		tr.querySelector(".thu").checked = alarm.daysOfWeek[3];
-		tr.querySelector(".fri").checked = alarm.daysOfWeek[4];
-		tr.querySelector(".sat").checked = alarm.daysOfWeek[5];
-		tr.querySelector(".sun").checked = alarm.daysOfWeek[6];
+	if (config.dayBrightness) {
+		setBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
 	}
+	
+	if (config.nightBrightness) {
+		setBrightness(document.getElementById("night-brightness-section"), config.nightBrightness);
+	}
+	
+	if (config.alarms) {		
+		for (var i=0; i < config.alarms.length; i++) {
+			var alarm = config.alarms[i];
+			
+			var tr = document.querySelectorAll("#alarms-table tbody tr")[i];
+			
+			tr.querySelector(".hour").value = alarm.hour;
+			tr.querySelector(".minute").value = alarm.minute;
+			tr.querySelector(".mon").checked = alarm.daysOfWeek[0];
+			tr.querySelector(".tue").checked = alarm.daysOfWeek[1];
+			tr.querySelector(".wed").checked = alarm.daysOfWeek[2];
+			tr.querySelector(".thu").checked = alarm.daysOfWeek[3];
+			tr.querySelector(".fri").checked = alarm.daysOfWeek[4];
+			tr.querySelector(".sat").checked = alarm.daysOfWeek[5];
+			tr.querySelector(".sun").checked = alarm.daysOfWeek[6];
+		}
+	}
+}
+
+function setBrightness(brightnessSection, brightnessConfig) {
+	brightnessSection.querySelector(".hour").value = brightnessConfig.hour;
+	brightnessSection.querySelector(".minute").value = brightnessConfig.minute;
+	brightnessSection.querySelector(".brightness").value = brightnessConfig.brightness;	
+}
+
+function getBrightness(brightnessSection, brightnessConfig) {
+	brightnessConfig.hour = brightnessSection.querySelector(".hour").value;
+	brightnessConfig.minute = brightnessSection.querySelector(".minute").value;
+	brightnessConfig.brightness = brightnessSection.querySelector(".brightness").value;	
 }
 
 function getConfigFromForm() {
 	data = {
 		deviceName: document.getElementById("deviceName").value,
 		timezone: document.getElementById("timezone").value,
+		dayBrightness: { hour: 0, minute: 0, brightness: 4 },
+		nightBrightness: { hour: 0, minute: 0, brightness: 4 },
 		alarms: []
 	};
+	
+	getBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
+	getBrightness(document.getElementById("night-brightness-section"), config.nightBrightness);
 	
 	var trs = document.querySelectorAll("#alarms-table tbody tr");
 	
@@ -161,7 +207,7 @@ function saveConfig() {
 	.then(() => document.getElementById("save").innerHTML = "Save");
 }
 
-function populateHours() {
+function populateHours(select) {
 	var select = alarmRowTemplate.querySelector(".hour");
 	
 	for (var i=0; i < 24; i++) {
@@ -174,9 +220,19 @@ function populateHours() {
 	}
 }
 
-function populateMinutes() {
-	var select = alarmRowTemplate.querySelector(".minute");
-	
+function populateHours(select) {
+	for (var i=0; i < 24; i++) {
+		var option = document.createElement("option");
+		option.value = i;
+		option.text = new String(i);
+		if (option.text.length == 1) option.text = "0" + option.text;
+		
+		select.add(option);
+	}
+}
+
+
+function populateMinutes(select) {
 	for (var i=0; i < 60; i+=1) {
 		var option = document.createElement("option");
 		option.value = i;
@@ -188,12 +244,21 @@ function populateMinutes() {
 }
 
 function populateAlarmLookups() {
-	populateHours();
-	populateMinutes();
+	populateHours(alarmRowTemplate.querySelector(".hour"));
+	populateMinutes(alarmRowTemplate.querySelector(".minute"));
+}
+
+function populateBrightnessLookups() {
+	populateHours(document.querySelector("#day-brightness-section .hour"));
+	populateMinutes(document.querySelector("#day-brightness-section .minute"));
+	
+	populateHours(document.querySelector("#night-brightness-section .hour"));
+	populateMinutes(document.querySelector("#night-brightness-section .minute"));
 }
 
 function setupAlarms() {
 	populateAlarmLookups();
+	populateBrightnessLookups();
 	
 	var rowsToAdd = 5;
 	var tableBody = document.querySelector("#alarms-table tbody");

@@ -65,37 +65,55 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
         config.setTimezone("BST");
     }
     
-    if (!json["alarms"]) return;
+    if (json["dayBrightness"])
+    {
+        parseBrightnessAlarmConfig(json["dayBrightness"], config.dayBrightnessAlarm);
+    }
 
-    auto jsonAlarms = json["alarms"].as<JsonArray>();
-    int index = 0;
-    for (JsonVariant jsonAlarm : jsonAlarms) {
-        config.alarms[index].setHour(jsonAlarm["hour"].as<byte>());
-        config.alarms[index].setMinute(jsonAlarm["minute"].as<byte>());
-        config.alarms[index].clearDaysOfWeek();
+    if (json["nightBrightness"])
+    {
+        parseBrightnessAlarmConfig(json["nightBrightness"], config.nightBrightnessAlarm);
+    }
 
-        auto jsonDaysOfWeek = jsonAlarm["daysOfWeek"].as<JsonArray>();
-        int dayIndex = 1;
+    if (json["alarms"])
+    {
+        auto jsonAlarms = json["alarms"].as<JsonArray>();
+        int index = 0;
+        for (JsonVariant jsonAlarm : jsonAlarms) {
+            config.alarms[index].setHour(jsonAlarm["hour"].as<byte>());
+            config.alarms[index].setMinute(jsonAlarm["minute"].as<byte>());
+            config.alarms[index].clearDaysOfWeek();
 
-        config.alarms[index].clearDaysOfWeek();
+            auto jsonDaysOfWeek = jsonAlarm["daysOfWeek"].as<JsonArray>();
+            int dayIndex = 1;
 
-        for (JsonVariant jsonDay : jsonDaysOfWeek) {
-            bool isDayOfWeek = jsonDay.as<bool>();
-            
-            // Serial.print("Day of week ");
-            // Serial.print(dayIndex);
-            // Serial.print(" is ");
-            // Serial.println(isDayOfWeek);
+            config.alarms[index].clearDaysOfWeek();
 
-            if (isDayOfWeek) {
-                config.alarms[index].enableDayOfWeek(dayIndex);
+            for (JsonVariant jsonDay : jsonDaysOfWeek) {
+                bool isDayOfWeek = jsonDay.as<bool>();
+                
+                // Serial.print("Day of week ");
+                // Serial.print(dayIndex);
+                // Serial.print(" is ");
+                // Serial.println(isDayOfWeek);
+
+                if (isDayOfWeek) {
+                    config.alarms[index].enableDayOfWeek(dayIndex);
+                }
+
+                dayIndex++;
             }
 
-            dayIndex++;
+            index++;
         }
-
-        index++;
     }
+}
+
+// Set the brightness alarm config
+void parseBrightnessAlarmConfig(JsonObject json, BrightnessAlarm brightnessAlarm) {
+    brightnessAlarm.setBrightness(json["brightness"].as<byte>());
+    brightnessAlarm.setHour(json["hour"].as<byte>());
+    brightnessAlarm.setMinute(json["minute"].as<byte>());
 }
 
 // Converts a config to JSON
@@ -106,6 +124,16 @@ DynamicJsonDocument convertConfigToJson() {
 
     doc["deviceName"] = config.getDeviceName();
     doc["timezone"] = config.getTimezone();
+    
+    doc["dayBrightness"] = doc.createNestedObject();
+    doc["dayBrightness"]["hour"] = config.dayBrightnessAlarm.getHour();
+    doc["dayBrightness"]["minute"] = config.dayBrightnessAlarm.getMinute();
+    doc["dayBrightness"]["brightness"] = config.dayBrightnessAlarm.getBrightness();
+
+    doc["nightBrightness"] = doc.createNestedObject();
+    doc["nightBrightness"]["hour"] = config.nightBrightnessAlarm.getHour();
+    doc["nightBrightness"]["minute"] = config.nightBrightnessAlarm.getMinute();
+    doc["nightBrightness"]["brightness"] = config.nightBrightnessAlarm.getBrightness();
 
     JsonArray alarmsJson = doc.createNestedArray("alarms");
 

@@ -1,5 +1,5 @@
 # XY Wifi Clock Replacement Firmware
-This is a replacement firmware for the XY-Clock with Wifi (and similar variants) found at https://www.aliexpress.com/item/1005002686302823.html and https://www.aliexpress.com/item/1005002941223785.html that eliminates the need to use the Sinilink app to control it. It is still early days in the development of this, so contributions and improvements are welcome. The objective has been to get a working end to end replacement for the current firmware that has the following features:
+This is a replacement firmware for the XY-Clock with Wifi (and similar variants) found at https://www.aliexpress.com/item/1005002686302823.html and https://www.aliexpress.com/item/1005002941223785.html that eliminates the need to use the Sinilink app to control it. It is still early days in the development of this proof of concept/beta project, so contributions and improvements are welcome. The objective has been to get a working end to end replacement for the current firmware that has the following features:
 * No need to install mobile app. Functionality controlled from ESP8285 on the clock.
 * Easy setup of connection to Wifi network using temporary access point.
 * Synchronisation with a Network Time Protocol server (NTP) to get the correct time.
