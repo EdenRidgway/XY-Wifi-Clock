@@ -6,9 +6,6 @@
 
 //#include <ESP8266WiFi.h>
 
-#include "UpdateTimeTask.h"
-UpdateTimeTask updateTimeTask;
-
 const int BUTTON_UP = 10;
 const int BUTTON_DOWN = 9;
 const int BUTTON_SET = 16;
@@ -40,38 +37,7 @@ const int BUZZER_PIN = 5;
 // Needs the time library: https://github.com/PaulStoffregen/Time
 #include <time.h>
 
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000 * 30);  // Use the pool.ntp.org an update it every 30 minutes
-
 //extern bool readyForNtp = false;
-
-// Task that runs as a separate "thread" to display the time on the TM1650 Segmented display
-class NtpUpdateTask {
-    public:
-        NtpUpdateTask() {
-            
-        }
-        
-        void loop() {
-            updateTime();
-        }
-
-        void initialise() {
-            timeClient.begin();
-        }
-
-        void updateTime() {
-            if (timeClient.update()) {
-                Serial.println("NTP Time updated");
-
-                unsigned long epoch = timeClient.getEpochTime();
-                setTime(epoch);
-                yield();
-            }
-        }
-};
-
-NtpUpdateTask ntpUpdateTask;
 
 // Track the state of the clock setup
 enum ClockState {
@@ -88,33 +54,37 @@ WiFiManager wifiManager;
 
 int displayBrightness = 1;
 
+struct tm* currentTimeinfo;
+uint16_t currentDisplayTime = 0;
+uint8_t displayHour = 0;
+uint8_t displayMinute = 0;
+uint8_t currentWeekDay = 0;
+
 class Alarm {
     protected:
-        byte alarmHour;
-        byte alarmMinute;
-        byte daysOfWeek = 0;
+        uint8_t alarmHour;
+        uint8_t alarmMinute;
+        uint8_t daysOfWeek = 0;
     
-        byte lastMinute = 0;
-
     public:
-        byte getHour() {
+        uint8_t getHour() {
             return alarmHour;
         }
 
-        void setHour(byte value) {
+        void setHour(uint8_t value) {
             alarmHour = value;
         }
 
-        byte getMinute() {
+        uint8_t getMinute() {
             return alarmMinute;
         }
 
-        void setMinute(byte value) {
+        void setMinute(uint8_t value) {
             alarmMinute = value;
         }
         
         // Whether or not it is for the day of the week
-        bool isForDayOfWeek(byte day) {
+        bool isForDayOfWeek(uint8_t day) {
             return (daysOfWeek & (1UL << day));   
         }
 
@@ -122,7 +92,7 @@ class Alarm {
             daysOfWeek = 0;
         }
 
-        void enableDayOfWeek(byte day) {
+        void enableDayOfWeek(uint8_t day) {
             daysOfWeek |= (1UL << day);
         }
 
@@ -132,26 +102,12 @@ class Alarm {
                 return false;
             }
             
-            int min = minute();
-
-            bool hasMinutesChanged = (lastMinute != min);
-            
-            // Update the display time when the time changes
-            if (hasMinutesChanged) {
-                lastMinute = min;
-
-                tm timeParts = updateTimeTask.getTimeParts();
-                int weekDay = timeParts.tm_wday;
-
-                if (timeParts.tm_hour == alarmHour && timeParts.tm_min == alarmMinute && isForDayOfWeek(timeParts.tm_wday))
-                {
-                    Serial.println("Alarm triggered");
-                    return true;
-                } 
-
-                return false;
+            if (displayHour == alarmHour && displayMinute == alarmMinute && isForDayOfWeek(currentWeekDay))
+            {
+                Serial.println("Alarm triggered");
+                return true;
             }
-            
+
             return false;
         }
 };
@@ -187,12 +143,12 @@ class Config {
     public:
         Alarm alarms[6]= { Alarm(), Alarm(), Alarm(), Alarm(), Alarm(), Alarm() };
         
-        BrightnessAlarm dayBrightnessAlarm;
-        BrightnessAlarm nightBrightnessAlarm;
+        BrightnessAlarm* dayBrightnessAlarm;
+        BrightnessAlarm* nightBrightnessAlarm;
 
         Config() {
-            // dayBrightnessAlarm = new BrightnessAlarm(6, 0, 3);
-            // nightBrightnessAlarm = new BrightnessAlarm(20, 0, 6);
+            dayBrightnessAlarm = new BrightnessAlarm(6, 0, 5);
+            nightBrightnessAlarm = new BrightnessAlarm(20, 0, 3);
         }
 
         void setDeviceName(String value) {
@@ -204,6 +160,10 @@ class Config {
         }
 
         String getDeviceName() {
+            if (deviceName == NULL || deviceName == "") {
+                deviceName = "XY-Clock";
+            }
+            
             return deviceName;
         }
 
@@ -212,12 +172,85 @@ class Config {
         }
 };
 
+#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
+
 Config config;
+
+bool isSpiffsStarted = false;
+
+void ensureSpiffsStarted() {
+    if (isSpiffsStarted) return;
+
+    if (!SPIFFS.begin()){
+        Serial.println("An Error has occurred while mounting SPIFFS");
+        return;
+    }
+
+    Serial.println("SPIFFS started");
+    isSpiffsStarted = true;
+}
+
+class Timezones {
+    public:
+        /* Get timezone posix string if it is a valid timezone */
+        static String getTimezonePosixText(String olsonTimezone) {
+            ensureSpiffsStarted();
+            
+            File timeZonesFile = SPIFFS.open("/timezones.json", "r");
+
+            DynamicJsonDocument doc(17000);
+            deserializeJson(doc, timeZonesFile);
+            timeZonesFile.close();
+
+            JsonObject documentRoot = doc.as<JsonObject>();
+            String posixText = documentRoot[olsonTimezone];
+            
+            Serial.print("Checking timezone: ");
+            Serial.print(olsonTimezone);
+            Serial.print(". Posix text found: ");
+            Serial.println(posixText);
+
+            doc.garbageCollect();
+            timeZonesFile.close();
+
+            if (posixText == NULL) {
+                posixText = "GMT0";
+            }
+
+            return posixText;
+        }
+
+        /* Is valid timezone name */
+        static bool isValidTimezone(String olsonTimezone) {
+            ensureSpiffsStarted();
+            
+            File timeZonesFile = SPIFFS.open("/timezones.json", "r");
+
+            DynamicJsonDocument doc(17000);
+            deserializeJson(doc, timeZonesFile);
+            timeZonesFile.close();
+
+            JsonObject documentRoot = doc.as<JsonObject>();
+            String posixText = documentRoot[olsonTimezone];
+            
+            timeZonesFile.close();
+            doc.garbageCollect();
+
+            if (posixText == NULL) {
+                return false;
+            }
+
+            return true;
+        }
+};
+
 uint8_t brightness = 4;
 
 #include <ESP8266mDNS.h>
 
 ESP8266WebServer server(80);
+
+String posixTimezoneText;
 
 // Main setup of clock
 void setup() {
@@ -257,20 +290,39 @@ void setup() {
 
         loadSettings();
 
+        String timezone = config.getTimezone();
+        
+        if (!Timezones::isValidTimezone(timezone)) {
+            timezone = "Etc/GMT";
+        }
+        
         Serial.print("Device name: ");
         Serial.println(config.getDeviceName());
         Serial.print("Timezone: ");
-        Serial.println(config.getTimezone());
+        Serial.println(timezone);
 
-        Serial.println("Setting timezone");
-        updateTimeTask.setTimezone(config.getTimezone());
+        config.setTimezone(timezone);
 
-        // Use a value between 1 and 7 for brightness
-        matrix.setIntensity(config.dayBrightnessAlarm.getBrightness());
-        matrix.fillScreen(LOW);
-        matrix.write();                 // Send the memory bitmap to the display
+        posixTimezoneText = Timezones::getTimezonePosixText(timezone);
 
-        Serial.print("Setup MDNS ");
+        Serial.print("Timezone posix text: ");
+        Serial.println(posixTimezoneText);
+
+        //setenv("TZ", "GMT0BST,M3.5.0/2,M10.5.0/2", 0);  // https://github.com/nayarsystems/posix_tz_db 
+        setenv("TZ", posixTimezoneText.c_str(), 0);  // https://github.com/nayarsystems/posix_tz_db 
+
+        // NTP Time sync once every 6 hours
+        configTime(6*3600, 0, "pool.ntp.org", "time.nist.gov");
+        Serial.print("Getting NTP time ");
+        
+        while (!time(nullptr)) {
+          Serial.println("*");
+          delay(250);  
+        }
+
+        updateDisplayBrightness();
+
+        Serial.println("Setup MDNS ");
 
          // Start the mDNS responder        
         if (MDNS.begin(config.getDeviceName())) {
@@ -279,11 +331,32 @@ void setup() {
             Serial.println("Error setting up MDNS responder!");
         }
 
-        ntpUpdateTask.initialise();
-        ntpUpdateTask.updateTime();
+        //ntpUpdateTask.initialise();
+        //ntpUpdateTask.updateTime();
 
         startWebServer();
     }
+}
+
+void updateDisplayBrightness() {
+    time_t rawtime; 
+    time(&rawtime); 
+
+    currentTimeinfo = localtime(&rawtime); 
+
+    uint16_t displayTime = (int)currentTimeinfo->tm_hour * 100 + currentTimeinfo->tm_min;
+    uint16_t dayBrightnessTime = (int)config.dayBrightnessAlarm->getHour() * 100 + config.dayBrightnessAlarm->getMinute();
+    uint16_t nightBrightnessTime = (int)config.nightBrightnessAlarm->getHour() * 100 + config.nightBrightnessAlarm->getMinute();
+
+    // Use the day brightness if we are in range otherwise switch to night brightness
+    if (displayTime >= dayBrightnessTime && displayTime < nightBrightnessTime) {
+        matrix.setIntensity(config.dayBrightnessAlarm->getBrightness());
+    } else {
+        matrix.setIntensity(config.nightBrightnessAlarm->getBrightness());
+    }
+
+    matrix.fillScreen(LOW);
+    matrix.write();
 }
 
 // Called once the Wifi Manager saves the settings
@@ -301,6 +374,26 @@ void checkAlarms() {
             soundAlarm();
         }
     }
+
+    if (config.dayBrightnessAlarm->hasAlarmTriggered() || config.nightBrightnessAlarm->hasAlarmTriggered()) {
+        updateDisplayBrightness();
+    }
+}
+
+/* Updates the display time */
+void updateDisplayTime() {
+    time_t rawtime; 
+    time(&rawtime); 
+
+    currentTimeinfo = localtime(&rawtime); 
+
+    uint8_t displayHour = currentTimeinfo->tm_hour;
+    uint8_t displayMinute = currentTimeinfo->tm_min;
+    currentWeekDay = 1- currentTimeinfo->tm_wday;
+    // Set Sunday appropriately
+    if (currentWeekDay == -1) currentWeekDay = 6;
+    
+    currentDisplayTime = displayHour * 100 + displayMinute;
 }
 
 // Main loop
@@ -311,8 +404,7 @@ void loop() {
     MDNS.update();
     yield();
 
-    updateTimeTask.loop();
-    ntpUpdateTask.loop();
+    updateDisplayTime();
     yield();
 
     checkAlarms();
@@ -383,10 +475,10 @@ void displayWaiting() {
 
 // Get the time and convert it to the current timezone. Display it on the segment display
 void displayTime() {
-	uint8_t digit0 = (updateTimeTask.displayNumber / 1000) % 10;
-	uint8_t digit1 = (updateTimeTask.displayNumber / 100) % 10;
-	uint8_t digit2 = (updateTimeTask.displayNumber / 10) % 10;
-	uint8_t digit3 = updateTimeTask.displayNumber % 10;
+	uint8_t digit0 = (currentDisplayTime / 1000) % 10;
+	uint8_t digit1 = (currentDisplayTime / 100) % 10;
+	uint8_t digit2 = (currentDisplayTime / 10) % 10;
+	uint8_t digit3 = currentDisplayTime % 10;
 
     Disp4Seg.setDisplayDigit(digit0, 0);
     Disp4Seg.setDisplayDigit(digit1, 1);

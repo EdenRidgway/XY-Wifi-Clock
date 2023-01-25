@@ -4,9 +4,11 @@
 #include <ESP8266WebServer.h>
 
 void startWebServer() {
-    Serial.println("Starting web server");
+    Serial.println("Starting Web server");
 
     server.on("/", handleRoot);
+    server.on("/timezones.json", handleGetTimezonesJson);
+    server.on("/favicon.ico", handleGetFavicon);
     server.onNotFound(handleNotFound); 
     server.on("/config", handleConfigJson);
 
@@ -20,6 +22,7 @@ String getContentType(String filename) {
   else if (filename.endsWith(".js")) return "application/javascript";
   else if (filename.endsWith(".ico")) return "image/x-icon";
   else if (filename.endsWith(".gz")) return "application/x-gzip";
+  else if (filename.endsWith(".json")) return "application/json";
   return "text/plain";
 }
 
@@ -52,6 +55,10 @@ void handleRoot() {
     if (!handleFileRead("/Config.html")) {
         server.send(404, "text/plain", "404: Not Found");
     }
+
+    if (!handleFileRead("/timezones.json")) {
+        server.send(404, "text/plain", "404: Not Found");
+    }
 }
 
 void handleConfigJson() {
@@ -68,20 +75,36 @@ void handleConfigJson() {
 
     server.send(405, "text/plain", "Method Not Allowed");
     return;
-
 }
 
 void handlePostConfigJson() {
     Serial.println("Web POST handleConfigJson");
+
+    String previousTimezone = config.getTimezone();
 
     DynamicJsonDocument json(2048);
 
     deserializeJson(json, server.arg("plain"));
     loadSettingsFromJson(json);
 
+    // Write it out to the serial console
+    serializeJson(json, Serial);
+
     saveSettings();
-    
+
+    String timezone = config.getTimezone();
+
     server.send(200, "text/plain");
+
+    if (!timezone.equalsIgnoreCase(previousTimezone))
+    {
+        Serial.print("Timezone changed to: ");
+        Serial.println(timezone);
+
+        Serial.println("Timezone change will trigger a device restart...");
+        ESP.restart();
+        delay(1000);
+    }
 }
 
 void handleGetConfigJson() {
@@ -92,6 +115,16 @@ void handleGetConfigJson() {
     String buffer;
     serializeJson(doc, buffer);
     server.send(200, "application/json", buffer);
+}
+
+void handleGetTimezonesJson() {
+    Serial.println("Web GET handleGetTimezonesJson");
+    handleFileRead("/timezones.json");
+}
+
+void handleGetFavicon() {
+    Serial.println("Web GET handleGetFavicon");
+    handleFileRead("/favicon.ico");
 }
 
 void handleNotFound() {

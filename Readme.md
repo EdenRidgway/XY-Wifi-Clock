@@ -8,8 +8,6 @@ This is a replacement firmware for the XY-Clock with Wifi (and similar variants)
   * Setup up to 6 alarms
 * After a power failure it should be able to restore the correct time without any user intervention (saved Wifi credentials with specified timezone).
 
-Note that the ability to change the timezone is on the to do list. For the time being you will need to look at the available list of timezones in UpdateTimeTask.h and change the line updateTimeTask->setTimezone("BST") to match your target timezone. Since the list is somewhat limited at the moment there is a decent chance you may need to add your timezone.
-
 ## To Do
 Since this is early days in the development of the firmware there is still quite a bit to do, including the following in order of priority:
  - [ ] Add functionality to the K_UP,  K_DOWN and K_SET buttons
@@ -40,6 +38,7 @@ You will need to install support for the ESP8266 chip in the Arduino IDE as well
 * ArduinoJson: https://github.com/bblanchon/ArduinoJson
 * NTPClient: https://github.com/arduino-libraries/NTPClient
 * Time: https://github.com/PaulStoffregen/Time
+* ezTime: https://github.com/ropg/ezTime
 * Adafruit_GFX by Adafruit: https://github.com/adafruit/Adafruit-GFX-Library
 * TM16xx LEDs and Buttons by Maxint: https://github.com/maxint-rd/TM16xx
 

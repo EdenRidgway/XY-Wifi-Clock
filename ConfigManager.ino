@@ -2,19 +2,6 @@
 #include <FS.h>
 
 bool isConfigLoaded = false;
-bool isSpiffsStarted = false;
-
-void ensureSpiffsStarted() {
-    if (isSpiffsStarted) return;
-
-    if (!SPIFFS.begin()){
-        Serial.println("An Error has occurred while mounting SPIFFS");
-        return;
-    }
-
-    Serial.println("SPIFFS started");
-    isSpiffsStarted = true;
-}
 
 void loadSettings() {
     Serial.println("loadSettings");
@@ -52,27 +39,30 @@ void loadSettings() {
 }
 
 // Loads the settings from a JSON document
-void loadSettingsFromJson(DynamicJsonDocument json) {    
+void loadSettingsFromJson(DynamicJsonDocument json) {
+    Serial.println("loadSettingsFromJson");
+    serializeJson(json, Serial);
+
     config.setDeviceName(json["deviceName"]);
     config.setTimezone(json["timezone"]);
-    
+
     // Set defaults
     if (!config.getDeviceName()) {
         config.setDeviceName("XY-Clock");
     }
 
     if (!config.getTimezone()) {
-        config.setTimezone("BST");
+        config.setTimezone("Europe/London");
     }
     
     if (json["dayBrightness"])
     {
-        parseBrightnessAlarmConfig(json["dayBrightness"], config.dayBrightnessAlarm);
+        parseBrightnessAlarmConfig(json["dayBrightness"], *config.dayBrightnessAlarm);
     }
 
     if (json["nightBrightness"])
     {
-        parseBrightnessAlarmConfig(json["nightBrightness"], config.nightBrightnessAlarm);
+        parseBrightnessAlarmConfig(json["nightBrightness"], *config.nightBrightnessAlarm);
     }
 
     if (json["alarms"])
@@ -126,14 +116,14 @@ DynamicJsonDocument convertConfigToJson() {
     doc["timezone"] = config.getTimezone();
     
     doc["dayBrightness"] = doc.createNestedObject();
-    doc["dayBrightness"]["hour"] = config.dayBrightnessAlarm.getHour();
-    doc["dayBrightness"]["minute"] = config.dayBrightnessAlarm.getMinute();
-    doc["dayBrightness"]["brightness"] = config.dayBrightnessAlarm.getBrightness();
+    doc["dayBrightness"]["hour"] = config.dayBrightnessAlarm->getHour();
+    doc["dayBrightness"]["minute"] = config.dayBrightnessAlarm->getMinute();
+    doc["dayBrightness"]["brightness"] = config.dayBrightnessAlarm->getBrightness();
 
     doc["nightBrightness"] = doc.createNestedObject();
-    doc["nightBrightness"]["hour"] = config.nightBrightnessAlarm.getHour();
-    doc["nightBrightness"]["minute"] = config.nightBrightnessAlarm.getMinute();
-    doc["nightBrightness"]["brightness"] = config.nightBrightnessAlarm.getBrightness();
+    doc["nightBrightness"]["hour"] = config.nightBrightnessAlarm->getHour();
+    doc["nightBrightness"]["minute"] = config.nightBrightnessAlarm->getMinute();
+    doc["nightBrightness"]["brightness"] = config.nightBrightnessAlarm->getBrightness();
 
     JsonArray alarmsJson = doc.createNestedArray("alarms");
 
