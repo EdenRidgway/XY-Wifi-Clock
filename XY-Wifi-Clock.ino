@@ -17,12 +17,17 @@ const int BUTTON_SET = 16;
 #include <Adafruit_GFX.h>
 #include <TM1650.h>
 #include <TM16xxMatrixGFX.h>
+#include <TM16xxDisplay.h>
+
+#define NUM_DIGITS 4
 
 // I2C pins
 const int SCL_PIN = 12;
 const int SDA_PIN = 13;
 
 TM1650 Disp4Seg(SDA_PIN, SCL_PIN);
+
+TM16xxDisplay display(&Disp4Seg, NUM_DIGITS);
 
 #define MATRIX_NUMCOLUMNS 5
 #define MATRIX_NUMROWS 3
@@ -279,6 +284,8 @@ ESP8266WebServer server(80);
 
 String posixTimezoneText;
 
+bool isInitialising = true;
+
 // Main setup of clock
 void setup() {
     Serial.begin(115200);
@@ -357,23 +364,47 @@ void setup() {
             Serial.println("Error setting up MDNS responder!");
         }
 
+        // Display IP Address
+        /*
+        IPAddress ipAddress = WiFi.localIP();
+        String ipAddressText = ipAddress.toString();
+        displayScrollingText(ipAddressText);
+        delay(500);
+        */
+        
         startWebServer();
+
+        isInitialising = false;
     }
 }
 
-void updateDisplayBrightness() {    
-    // time_t rawtime; 
-    // time(&rawtime); 
+void displayScrollingText(String text) {
+    int endPos = 0-text.length()-1;
 
-    // currentTimeinfo = localtime(&rawtime); 
+    Serial.print("Displaying text ");
+    Serial.print(text.length());
+    Serial.print(" characters long: ");
+    Serial.print(text);
+    Serial.print(" End cursor pos: ");
+    Serial.println(endPos);
 
-    // uint16_t displayTime = (int)currentTimeinfo->tm_hour * 100 + currentTimeinfo->tm_min;
+    for (int cursorPosition = 0; cursorPosition > endPos; cursorPosition--) {
+        Serial.print("Cursor Position: ");
+        Serial.println(cursorPosition);
+
+        display.setCursor(cursorPosition);
+        display.println(text);
+        delay(500);
+        display.clear();
+    }
+}
+
+void updateDisplayBrightness() {
     uint16_t dayBrightnessTime = (int)config.dayBrightnessAlarm->getHour() * 100 + config.dayBrightnessAlarm->getMinute();
     uint16_t nightBrightnessTime = (int)config.nightBrightnessAlarm->getHour() * 100 + config.nightBrightnessAlarm->getMinute();
 
     uint8_t alarmBrightness = 4;
     bool isDayMatch = false;
-
 
     // Use the day brightness if we are in range otherwise switch to night brightness
     if (currentDisplayTime >= dayBrightnessTime && currentDisplayTime < nightBrightnessTime) {
@@ -382,18 +413,7 @@ void updateDisplayBrightness() {
     } else {
         alarmBrightness = config.nightBrightnessAlarm->getBrightness();
     }
-/*
-    Serial.print("Current Brightness: ");
-    Serial.print(brightness);
-    Serial.print(" New Brightness: ");
-    Serial.print(alarmBrightness);
-    Serial.print(" Current Time: ");
-    Serial.print(currentDisplayTime);
-    Serial.print(" Day Time: ");
-    Serial.print(dayBrightnessTime);
-    Serial.print(" Night Time: ");
-    Serial.print(nightBrightnessTime);
-*/
+
     if (alarmBrightness == brightness) {
         return;
     }
@@ -455,12 +475,14 @@ void updateDisplayTime() {
 }
 
 // Main loop
-void loop() {    
+void loop() {
     server.handleClient();
     yield();
 
     MDNS.update();
     yield();
+
+    if (isInitialising) return;
 
     updateDisplayTime();
     yield();

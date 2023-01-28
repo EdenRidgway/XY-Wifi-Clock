@@ -5,6 +5,7 @@ This is a replacement firmware for the XY-Clock with Wifi (and similar variants)
 * Synchronisation with a Network Time Protocol server (NTP) to get the correct time.
 * A configuration web page that allows you to:
   * Change the timezone and device name
+  * Change brightness based on the time of day
   * Setup up to 6 alarms
 * After a power failure it should be able to restore the correct time without any user intervention (saved Wifi credentials with specified timezone).
 
@@ -36,9 +37,7 @@ You will need to install the ESP8266 File System Uploader plugin for arduino IDE
 You will need to install support for the ESP8266 chip in the Arduino IDE as well as the following libraries in order to get the firmware to compile:
 * WiFiManager by Tzapu: https://github.com/tzapu/WiFiManager
 * ArduinoJson: https://github.com/bblanchon/ArduinoJson
-* NTPClient: https://github.com/arduino-libraries/NTPClient
 * Time: https://github.com/PaulStoffregen/Time
-* ezTime: https://github.com/ropg/ezTime
 * Adafruit_GFX by Adafruit: https://github.com/adafruit/Adafruit-GFX-Library
 * TM16xx LEDs and Buttons by Maxint: https://github.com/maxint-rd/TM16xx
 
