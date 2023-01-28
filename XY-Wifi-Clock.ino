@@ -64,6 +64,8 @@ class Alarm {
     protected:
         uint8_t alarmHour;
         uint8_t alarmMinute;
+        uint8_t lastHour = -1;
+        uint8_t lastMinute = -1;
         uint8_t daysOfWeek = 0;
     
     public:
@@ -97,15 +99,40 @@ class Alarm {
         }
 
         // Determines if the alarm has triggered
-        bool hasAlarmTriggered() {
+        bool hasAlarmTriggered(uint8_t hour, uint8_t minute, uint8_t day) {
             if (daysOfWeek == 0) {
                 return false;
             }
             
-            if (displayHour == alarmHour && displayMinute == alarmMinute && isForDayOfWeek(currentWeekDay))
+            if (lastHour != hour || lastMinute != minute)
             {
-                Serial.println("Alarm triggered");
-                return true;
+                lastHour = hour;
+                lastMinute = minute;
+
+                bool isDayOfWeekMatch = isForDayOfWeek(day);
+/*
+                Serial.print("Alarm check ");
+                Serial.print("Alarm ");
+                Serial.print(alarmHour);
+                Serial.print(":");
+                Serial.print(alarmMinute);
+                Serial.print(" Days: ");
+                Serial.println(daysOfWeek);
+
+                Serial.print("Current Time: ");
+                Serial.print(hour);
+                Serial.print(":");
+                Serial.print(minute);
+                Serial.print(" Week Day: ");
+                Serial.print(day);
+                Serial.print(" Is day match: ");
+                Serial.println(isDayOfWeekMatch);
+*/
+                if (hour == alarmHour && minute == alarmMinute && isDayOfWeekMatch)
+                {
+                    Serial.println("Alarm triggered");
+                    return true;
+                }
             }
 
             return false;
@@ -161,7 +188,7 @@ class Config {
 
         String getDeviceName() {
             if (deviceName == NULL || deviceName == "") {
-                deviceName = "XY-Clock";
+                deviceName = "XYClock";
             }
             
             return deviceName;
@@ -308,7 +335,6 @@ void setup() {
         Serial.print("Timezone posix text: ");
         Serial.println(posixTimezoneText);
 
-        //setenv("TZ", "GMT0BST,M3.5.0/2,M10.5.0/2", 0);  // https://github.com/nayarsystems/posix_tz_db 
         setenv("TZ", posixTimezoneText.c_str(), 0);  // https://github.com/nayarsystems/posix_tz_db 
 
         // NTP Time sync once every 6 hours
@@ -331,30 +357,59 @@ void setup() {
             Serial.println("Error setting up MDNS responder!");
         }
 
-        //ntpUpdateTask.initialise();
-        //ntpUpdateTask.updateTime();
-
         startWebServer();
     }
 }
 
-void updateDisplayBrightness() {
-    time_t rawtime; 
-    time(&rawtime); 
+void updateDisplayBrightness() {    
+    // time_t rawtime; 
+    // time(&rawtime); 
 
-    currentTimeinfo = localtime(&rawtime); 
+    // currentTimeinfo = localtime(&rawtime); 
 
-    uint16_t displayTime = (int)currentTimeinfo->tm_hour * 100 + currentTimeinfo->tm_min;
+    // uint16_t displayTime = (int)currentTimeinfo->tm_hour * 100 + currentTimeinfo->tm_min;
     uint16_t dayBrightnessTime = (int)config.dayBrightnessAlarm->getHour() * 100 + config.dayBrightnessAlarm->getMinute();
     uint16_t nightBrightnessTime = (int)config.nightBrightnessAlarm->getHour() * 100 + config.nightBrightnessAlarm->getMinute();
 
+    uint8_t alarmBrightness = 4;
+    bool isDayMatch = false;
+
+
     // Use the day brightness if we are in range otherwise switch to night brightness
-    if (displayTime >= dayBrightnessTime && displayTime < nightBrightnessTime) {
-        matrix.setIntensity(config.dayBrightnessAlarm->getBrightness());
+    if (currentDisplayTime >= dayBrightnessTime && currentDisplayTime < nightBrightnessTime) {
+        isDayMatch = true;
+        alarmBrightness = config.dayBrightnessAlarm->getBrightness();
     } else {
-        matrix.setIntensity(config.nightBrightnessAlarm->getBrightness());
+        alarmBrightness = config.nightBrightnessAlarm->getBrightness();
+    }
+/*
+    Serial.print("Current Brightness: ");
+    Serial.print(brightness);
+    Serial.print(" New Brightness: ");
+    Serial.print(alarmBrightness);
+    Serial.print(" Current Time: ");
+    Serial.print(currentDisplayTime);
+    Serial.print(" Day Time: ");
+    Serial.print(dayBrightnessTime);
+    Serial.print(" Night Time: ");
+    Serial.print(nightBrightnessTime);
+*/
+    if (alarmBrightness == brightness) {
+        return;
     }
 
+    brightness = alarmBrightness;
+    
+    if (isDayMatch) {
+        Serial.println("Day brightness match");
+    } else {
+        Serial.println("Night brightness match");        
+    }
+
+    Serial.print("Setting brightness to ");
+    Serial.println(brightness);
+
+    matrix.setIntensity(brightness);
     matrix.fillScreen(LOW);
     matrix.write();
 }
@@ -369,15 +424,18 @@ void saveWifiManagerParamsCallback() {
 // Checks the alarms
 void checkAlarms() {
     for (auto& alarm : config.alarms) {
-        if (alarm.hasAlarmTriggered()) {
+        if (alarm.hasAlarmTriggered(displayHour, displayMinute, currentWeekDay)) {
             //yield();
             soundAlarm();
         }
     }
-
-    if (config.dayBrightnessAlarm->hasAlarmTriggered() || config.nightBrightnessAlarm->hasAlarmTriggered()) {
+    /*
+    if (config.dayBrightnessAlarm->hasAlarmTriggered(displayHour, displayMinute, currentWeekDay) || 
+        config.nightBrightnessAlarm->hasAlarmTriggered(displayHour, displayMinute, currentWeekDay)) {
+        
         updateDisplayBrightness();
     }
+    */
 }
 
 /* Updates the display time */
@@ -387,11 +445,11 @@ void updateDisplayTime() {
 
     currentTimeinfo = localtime(&rawtime); 
 
-    uint8_t displayHour = currentTimeinfo->tm_hour;
-    uint8_t displayMinute = currentTimeinfo->tm_min;
-    currentWeekDay = 1- currentTimeinfo->tm_wday;
+    displayHour = currentTimeinfo->tm_hour;
+    displayMinute = currentTimeinfo->tm_min;
+    currentWeekDay = currentTimeinfo->tm_wday;
     // Set Sunday appropriately
-    if (currentWeekDay == -1) currentWeekDay = 6;
+    if (currentWeekDay == 0) currentWeekDay = 7;
     
     currentDisplayTime = displayHour * 100 + displayMinute;
 }
@@ -406,9 +464,6 @@ void loop() {
 
     updateDisplayTime();
     yield();
-
-    checkAlarms();
-    //checkButtons();
 
     switch (currentClockState) {
         case WaitingForWifi:
@@ -428,6 +483,11 @@ void loop() {
             yield();
             break;
     }
+    
+    checkAlarms();
+    //checkButtons();
+
+    updateDisplayBrightness();
 }
 
 // Check the button states and perform the necessary actions

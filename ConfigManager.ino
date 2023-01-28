@@ -11,7 +11,7 @@ void loadSettings() {
     File configFile = SPIFFS.open("/config.json", "r");
 
     if (!configFile) {
-        config.setDeviceName("XY-Clock");
+        config.setDeviceName("XYClock");
         config.setTimezone("UTC");
 
         Serial.println("Failed to open config file for reading");
@@ -48,7 +48,7 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 
     // Set defaults
     if (!config.getDeviceName()) {
-        config.setDeviceName("XY-Clock");
+        config.setDeviceName("XYClock");
     }
 
     if (!config.getTimezone()) {
@@ -57,12 +57,12 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
     
     if (json["dayBrightness"])
     {
-        parseBrightnessAlarmConfig(json["dayBrightness"], *config.dayBrightnessAlarm);
+        parseBrightnessAlarmConfig(json["dayBrightness"], config.dayBrightnessAlarm);
     }
 
     if (json["nightBrightness"])
     {
-        parseBrightnessAlarmConfig(json["nightBrightness"], *config.nightBrightnessAlarm);
+        parseBrightnessAlarmConfig(json["nightBrightness"], config.nightBrightnessAlarm);
     }
 
     if (json["alarms"])
@@ -100,10 +100,10 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 }
 
 // Set the brightness alarm config
-void parseBrightnessAlarmConfig(JsonObject json, BrightnessAlarm brightnessAlarm) {
-    brightnessAlarm.setBrightness(json["brightness"].as<byte>());
-    brightnessAlarm.setHour(json["hour"].as<byte>());
-    brightnessAlarm.setMinute(json["minute"].as<byte>());
+void parseBrightnessAlarmConfig(JsonObject json, BrightnessAlarm* brightnessAlarm) {
+    brightnessAlarm->setBrightness(json["brightness"].as<byte>());
+    brightnessAlarm->setHour(json["hour"].as<byte>());
+    brightnessAlarm->setMinute(json["minute"].as<byte>());
 }
 
 // Converts a config to JSON
@@ -145,6 +145,7 @@ DynamicJsonDocument convertConfigToJson() {
 }
 
 void saveSettings() {
+    Serial.println("");
     Serial.println("saveSettings");
 
     ensureSpiffsStarted();
