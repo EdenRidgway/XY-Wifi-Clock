@@ -18,11 +18,8 @@ Since this is early days in the development of the firmware there is still quite
  - [ ] Leverage the other functionality available on the board, such as the DM1307Z+ real-time clock. 
  - [ ] Support playing music with versions that include an [MP3 Decoding board and Bluetooth 5.0](https://www.aliexpress.com/item/1005002933216217.html)
  
-## Current Issues
-* The TM1650 ColonOn function appears to also highlight the two points at the bottom of the display. This will have something to do with the bitmap settings in the library.
-
 ## Using the new Firmware
-* When using it for the first time it will create a Wifi access point called XY-Clock. Connect to this and select the wifi network and enter the password. It will then connect to the Wifi Network and sync the time with the pool.ntp.org Network Time Protocol server.
+* When using it for the first time it will create a Wifi access point called XYClock. Connect to this and select the wifi network and enter the password. It will then connect to the Wifi Network and sync the time with the pool.ntp.org Network Time Protocol server.
 
 <img src="https://camo.githubusercontent.com/25be9c499e4b7b5e01a8bce1c58263084c40f3b2c4647f5c9ef62d6d5a3c9792/687474703a2f2f692e696d6775722e636f6d2f595076573965716c2e706e67" height="300px" />
 
