@@ -59,7 +59,7 @@ When you want to flash the ESP8285 chip you need to connect GPIO0 to GND before 
 
 ![image](./Documentation/Images/Flashing-wifi-clock.jpg)
 
-After the first flash and upload of Sketch Data, you can use ArduinoOTA to update it.  It may be important to always use the same board configuration as you used during the initial flash so as to keep SPIFFs intact. For now, use Board: Generic ESP8266 with 1MB Flash FS:64KB OTA:~470KB.
+After the first flash and upload of Sketch Data, you can use ArduinoOTA to update it.  It may be important to always use the same board configuration as you used during the initial flash so as to keep SPIFFs intact. For now, Board: Generic ESP8266 with 1MB Flash FS:64KB OTA:~470KB is enough (but this board has 2MB so that may change if this project grows in size).
 
 ## Thanks
 This work is built on top investigations and information that others have gathered. In particular I want to thank:
