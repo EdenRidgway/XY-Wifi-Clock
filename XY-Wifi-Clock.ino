@@ -540,34 +540,40 @@ void checkButtons() {
 
 // Displays a spinner
 void displayWaiting() {
-  Serial.println("displayWaiting");
-
-  for (uint8_t k = 0; k < 3; k++) {
-    for (uint8_t i = 0; i < 4; i++) {
-      for (uint8_t j = 1; j < 0x40; j = j << 1) {
-        Disp4Seg.setSegments(j, i);
-        delay(50);
-        yield();
-      }
-
-      Disp4Seg.setSegments(0, i);
+    Serial.println("displayWaiting");
+    for (uint8_t k = 0; k < 3; k++) {
+        for (uint8_t i = 0; i < 4; i++) {
+            for (uint8_t j = 1; j < 0x40; j = j << 1) {
+                Disp4Seg.setSegments(j, i);
+                delay(50);
+                yield();
+            }
+        Disp4Seg.setSegments(0, i);
+        }
     }
-  }
 }
-
 
 // Get the time and convert it to the current timezone. Display it on the segment display
 void displayTime() {
-	uint8_t digit0 = (currentDisplayTime / 1000) % 10;
-	uint8_t digit1 = (currentDisplayTime / 100) % 10;
-	uint8_t digit2 = (currentDisplayTime / 10) % 10;
-	uint8_t digit3 = currentDisplayTime % 10;
+    uint8_t digit0 = (currentDisplayTime / 1000) % 10;
+    uint8_t digit1 = (currentDisplayTime / 100) % 10;
+    uint8_t digit2 = (currentDisplayTime / 10) % 10;
+    uint8_t digit3 = currentDisplayTime % 10;
+    bool colonOn = true;
+    uint8_t currentSec = currentTimeinfo->tm_sec;
+
+    // make the colon blink
+    if ( (currentSec & 0x01) == 0) {
+        colonOn = true;
+    } else {
+        colonOn = false;
+    }
 
     Disp4Seg.setDisplayDigit(digit0, 0);
     Disp4Seg.setDisplayDigit(digit1, 1);
     // Add the colon on to the last 2 digits
-    Disp4Seg.setDisplayDigit(digit2, 2, true);
-    Disp4Seg.setDisplayDigit(digit3, 3, true);
+    Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
+    Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
     yield();
 }
 
