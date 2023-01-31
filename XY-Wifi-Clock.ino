@@ -1,9 +1,9 @@
 // Distributed under AGPL v3 license. See license.txt
 
 // Need to install the WiFiManager library by tzapu (not the other ones)
-#include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
-#include <ArduinoOTA.h>
+#include <ArduinoOTA.h>  // https://github.com/jandrassy/ArduinoOTA
 
 //#include <ESP8266WiFi.h>
 
@@ -14,7 +14,8 @@ const int BUTTON_SET = 16;
 #include "pitches.h"
 
 // TM1650 Digital Display
-// Need to install Adafruit_GFX and TM16xx
+// Need to install Adafruit_GFX  // https://github.com/adafruit/Adafruit-GFX-Library
+// And TM16xx  // https://github.com/maxint-rd/TM16xx
 #include <Adafruit_GFX.h>
 #include <TM1650.h>
 #include <TM16xxMatrixGFX.h>
@@ -35,7 +36,7 @@ const int BUZZER_PIN = 5;
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 
-// Needs the time library: https://github.com/PaulStoffregen/Time
+// Needs the time library  https://github.com/PaulStoffregen/Time
 #include <time.h>
 
 //extern bool readyForNtp = false;
@@ -170,6 +171,7 @@ class Config {
 
     public:
         Alarm alarms[6]= { Alarm(), Alarm(), Alarm(), Alarm(), Alarm(), Alarm() };
+        bool TwelvehourMode;
         
         BrightnessAlarm* dayBrightnessAlarm;
         BrightnessAlarm* nightBrightnessAlarm;
@@ -187,6 +189,10 @@ class Config {
             timezone = value;
         }
 
+        void setTwelvehourMode(bool value) {
+            TwelvehourMode = value;
+        }
+
         String getDeviceName() {
             if (deviceName == NULL || deviceName == "") {
                 deviceName = "XYClock";
@@ -197,6 +203,10 @@ class Config {
 
         String getTimezone() {
             return timezone;
+        }
+
+        bool getTwelvehourMode() {
+             return TwelvehourMode;
         }
 };
 
@@ -313,6 +323,11 @@ void setup() {
         Serial.println("Failed to connect to Wifi Network");
     } else {
         Serial.println("Connected to Wifi Network");
+        /// Trying to allow the Portal to remain active...
+        // wifiManager.setConfigPortalBlocking(false);
+        // wifiManager.startConfigPortal();
+        // https://github.com/tzapu/WiFiManager/blob/master/examples/Super/OnDemandConfigPortal/OnDemandConfigPortal.ino
+        // WiFi.mode(WIFI_AP_STA);
 
         currentClockState = DisplayingTime;
 
@@ -346,6 +361,14 @@ void setup() {
           Serial.println("*");
           delay(250);  
         }
+
+        bool TwelvehourMode = config.getTwelvehourMode();
+        if (not (TwelvehourMode == true || TwelvehourMode == false)) {
+            TwelvehourMode = false;
+        }
+        Serial.print("12 Hour Mode: ");
+        Serial.println(TwelvehourMode);
+        config.setTwelvehourMode(TwelvehourMode);
 
         updateDisplayBrightness();
 
@@ -471,7 +494,19 @@ void updateDisplayTime() {
     currentWeekDay = currentTimeinfo->tm_wday;
     // Set Sunday appropriately
     if (currentWeekDay == 0) currentWeekDay = 7;
-    
+
+    // convert to 12 hour time if TwelvehourMode is on
+    bool TwelvehourMode = config.getTwelvehourMode();
+    if (TwelvehourMode == true) {
+        if (displayHour == 0) {
+            displayHour = 12;
+        }
+        if (displayHour >= 13) {
+            displayHour = (displayHour - 12);
+        }
+    }
+    //config.setTwelvehourMode(TwelvehourMode);
+
     currentDisplayTime = displayHour * 100 + displayMinute;
 }
 
@@ -559,21 +594,28 @@ void displayTime() {
     uint8_t digit1 = (currentDisplayTime / 100) % 10;
     uint8_t digit2 = (currentDisplayTime / 10) % 10;
     uint8_t digit3 = currentDisplayTime % 10;
-    bool colonOn = true;
     uint8_t currentSec = currentTimeinfo->tm_sec;
+    bool colonOn = false;
 
     // make the colon blink
-    if ( (currentSec & 0x01) == 0) {
+    if ((currentSec & 0x01) == 0) {
         colonOn = true;
-    } else {
-        colonOn = false;
     }
 
-    Disp4Seg.setDisplayDigit(digit0, 0);
+    // if TwelvehourMode is on and the first digit is zero, make it blank
+    bool TwelvehourMode = config.getTwelvehourMode();
+    if ((TwelvehourMode == true) && (digit0 == 0)) {
+        Disp4Seg.setSegments(0, 0);
+    } else {
+        Disp4Seg.setDisplayDigit(digit0, 0);
+    }
+    //config.setTwelvehourMode(TwelvehourMode);
+
     Disp4Seg.setDisplayDigit(digit1, 1);
     // Add the colon on to the last 2 digits
     Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
     Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
+
     yield();
 }
 
