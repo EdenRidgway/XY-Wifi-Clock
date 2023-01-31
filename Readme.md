@@ -37,6 +37,7 @@ You will need to install support for the ESP8266 chip in the Arduino IDE as well
 * Time: https://github.com/PaulStoffregen/Time
 * Adafruit_GFX by Adafruit: https://github.com/adafruit/Adafruit-GFX-Library
 * TM16xx LEDs and Buttons by Maxint: https://github.com/maxint-rd/TM16xx
+* ArduinoOTA by JAndrassy: https://github.com/jandrassy/ArduinoOTA
 
 ## Reprogramming the Wifi Clock
 You can use an FTDI programmer and empty pins at the top left of the board to reprogram the ESP8285. You can use breadboard jumper wires to connect it up to the FTDI programmer. Make sure you put the FTDI programmer in 3.3V mode (you will destroy the chip if the FTDI is in 5V mode). The layout of the pins on the PCB are as follows:
@@ -57,6 +58,8 @@ You need to connect the FTDI to the board in the following way:
 When you want to flash the ESP8285 chip you need to connect GPIO0 to GND before you connect the FTDI programmer to the computer (before you plug it into the USB port). You can then flash the new firmware on to the board. Once the new firmware has been uploaded disconnect GPIO0 from GND and reset the device to run it. You can just unplug the FTDI from the USB port and plug it back in which will resupply power to the board and allow you to use the Serial Monitor to debug it. You may want to uncomment the delay code in the Arduino sketch startup code to give your computer time to connect to the serial output.
 
 ![image](./Documentation/Images/Flashing-wifi-clock.jpg)
+
+After the first flash and upload of Sketch Data, you can use ArduinoOTA to update it.  It may be important to always use the same board configuration as you used during the initial flash so as to keep SPIFFs intact. I recommend setting to Board: Generic ESP8266 with 2MB Flash / FS:256KB.
 
 ## Thanks
 This work is built on top investigations and information that others have gathered. In particular I want to thank:

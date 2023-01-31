@@ -1,8 +1,9 @@
 // Distributed under AGPL v3 license. See license.txt
 
-// Need to install the WiFiManager library by tzapu (not the other ones)
-#include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
+// Need to install the WiFiManager library by tzapu (not the other ones) https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <WiFiManager.h>   // if using Arduino IDE, click here to search: http://librarymanager#WiFiManager_ESPx_tzapu
+#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson // if using Arduino IDE, click here to search: http://librarymanager#ArduinoJson
+#include <ArduinoOTA.h>  // https://github.com/jandrassy/ArduinoOTA // if using Arduino IDE, click here to search: http://librarymanager#ArduinoOTA
 
 //#include <ESP8266WiFi.h>
 
@@ -12,14 +13,9 @@ const int BUTTON_SET = 16;
 
 #include "pitches.h"
 
-// TM1650 Digital Display
-// Need to install Adafruit_GFX and TM16xx
-#include <Adafruit_GFX.h>
-#include <TM1650.h>
+#include <Adafruit_GFX.h> // Adafruit_GFX https://github.com/adafruit/Adafruit-GFX-Library // if using Arduino IDE, click here to search: http://librarymanager#Adafruit_GFX_graphics_core_library
+#include <TM1650.h> // TM1650 Digital Display https://github.com/maxint-rd/TM16xx // if using Arduino IDE, click here to search: http://librarymanager#TM16xx_LEDs_and_Buttons
 #include <TM16xxMatrixGFX.h>
-#include <TM16xxDisplay.h>
-
-#define NUM_DIGITS 4
 
 // I2C pins
 const int SCL_PIN = 12;
@@ -27,20 +23,15 @@ const int SDA_PIN = 13;
 
 TM1650 Disp4Seg(SDA_PIN, SCL_PIN);
 
-TM16xxDisplay display(&Disp4Seg, NUM_DIGITS);
-
 #define MATRIX_NUMCOLUMNS 5
 #define MATRIX_NUMROWS 3
 TM16xxMatrixGFX matrix(&Disp4Seg, MATRIX_NUMCOLUMNS, MATRIX_NUMROWS);    // TM16xx object, columns, rows#
 
 const int BUZZER_PIN = 5;
-// Need to install NTPClient by Fabrice Weinberg
 // Source for NTP with timezones: https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
 #include <WiFiUdp.h>
-#include <NTPClient.h>
-
-// Needs the time library: https://github.com/PaulStoffregen/Time
-#include <time.h>
+#include <NTPClient.h> // NTPClient by Fabrice Weinberg https://github.com/arduino-libraries/NTPClient // if using Arduino IDE, click here to search: http://librarymanager#NTPClient
+#include <time.h> // Time library  https://github.com/PaulStoffregen/Time  // if using Arduino IDE, click here to search: http://librarymanager#Timekeeping_functionality_for_Arduino
 
 //extern bool readyForNtp = false;
 
@@ -174,6 +165,7 @@ class Config {
 
     public:
         Alarm alarms[6]= { Alarm(), Alarm(), Alarm(), Alarm(), Alarm(), Alarm() };
+        bool twelvehourMode;
         
         BrightnessAlarm* dayBrightnessAlarm;
         BrightnessAlarm* nightBrightnessAlarm;
@@ -191,6 +183,10 @@ class Config {
             timezone = value;
         }
 
+        void settwelvehourMode(bool value) {
+            twelvehourMode = value;
+        }
+
         String getDeviceName() {
             if (deviceName == NULL || deviceName == "") {
                 deviceName = "XYClock";
@@ -202,9 +198,11 @@ class Config {
         String getTimezone() {
             return timezone;
         }
-};
 
-#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
+        bool gettwelvehourMode() {
+             return twelvehourMode;
+        }
+};
 
 Config config;
 
@@ -284,8 +282,6 @@ ESP8266WebServer server(80);
 
 String posixTimezoneText;
 
-bool isInitialising = true;
-
 // Main setup of clock
 void setup() {
     Serial.begin(115200);
@@ -319,6 +315,11 @@ void setup() {
         Serial.println("Failed to connect to Wifi Network");
     } else {
         Serial.println("Connected to Wifi Network");
+        /// Trying to allow the Portal to remain active...
+        // wifiManager.setConfigPortalBlocking(false);
+        // wifiManager.startConfigPortal();
+        // https://github.com/tzapu/WiFiManager/blob/master/examples/Super/OnDemandConfigPortal/OnDemandConfigPortal.ino
+        // WiFi.mode(WIFI_AP_STA);
 
         currentClockState = DisplayingTime;
 
@@ -353,58 +354,62 @@ void setup() {
           delay(250);  
         }
 
+        bool twelvehourMode = config.gettwelvehourMode();
+        if (not (twelvehourMode == true || twelvehourMode == false)) {
+            twelvehourMode = false;
+        }
+        Serial.print("12 Hour Mode: ");
+        Serial.println(twelvehourMode);
+        config.settwelvehourMode(twelvehourMode);
+
         updateDisplayBrightness();
 
         Serial.println("Setup MDNS ");
 
-         // Start the mDNS responder        
+         // Start the mDNS responder
         if (MDNS.begin(config.getDeviceName())) {
             Serial.println("mDNS responder started");
         } else {
             Serial.println("Error setting up MDNS responder!");
         }
 
-        // Display IP Address
-        /*
-        IPAddress ipAddress = WiFi.localIP();
-        String ipAddressText = ipAddress.toString();
-        displayScrollingText(ipAddressText);
-        delay(500);
-        */
-        
+        // ArduinoOTA Setup
+        ArduinoOTA.onStart([]() {
+            Serial.println("OTA Start");
+        });
+        ArduinoOTA.onEnd([]() {
+            Serial.println("\nOTA End");
+        });
+        ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+            Serial.printf("Update Progress: %u%%\r", (progress / (total / 100)));
+        });
+        ArduinoOTA.onError([](ota_error_t error) {
+            Serial.printf("OTA Error[%u]: ", error);
+            if (error == OTA_AUTH_ERROR) Serial.println("OTA Auth Failed");
+            else if (error == OTA_BEGIN_ERROR) Serial.println("OTA Begin Failed");
+            else if (error == OTA_CONNECT_ERROR) Serial.println("OTA Connect Failed");
+            else if (error == OTA_RECEIVE_ERROR) Serial.println("OTA Receive Failed");
+            else if (error == OTA_END_ERROR) Serial.println("OTA End Failed");
+        });
+        ArduinoOTA.begin();
+
         startWebServer();
-
-        isInitialising = false;
     }
 }
 
-void displayScrollingText(String text) {
-    int endPos = 0-text.length()-1;
+void updateDisplayBrightness() {    
+    // time_t rawtime; 
+    // time(&rawtime); 
 
-    Serial.print("Displaying text ");
-    Serial.print(text.length());
-    Serial.print(" characters long: ");
-    Serial.print(text);
-    Serial.print(" End cursor pos: ");
-    Serial.println(endPos);
+    // currentTimeinfo = localtime(&rawtime); 
 
-    for (int cursorPosition = 0; cursorPosition > endPos; cursorPosition--) {
-        Serial.print("Cursor Position: ");
-        Serial.println(cursorPosition);
-
-        display.setCursor(cursorPosition);
-        display.println(text);
-        delay(500);
-        display.clear();
-    }
-}
-
-void updateDisplayBrightness() {
+    // uint16_t displayTime = (int)currentTimeinfo->tm_hour * 100 + currentTimeinfo->tm_min;
     uint16_t dayBrightnessTime = (int)config.dayBrightnessAlarm->getHour() * 100 + config.dayBrightnessAlarm->getMinute();
     uint16_t nightBrightnessTime = (int)config.nightBrightnessAlarm->getHour() * 100 + config.nightBrightnessAlarm->getMinute();
 
     uint8_t alarmBrightness = 4;
     bool isDayMatch = false;
+
 
     // Use the day brightness if we are in range otherwise switch to night brightness
     if (currentDisplayTime >= dayBrightnessTime && currentDisplayTime < nightBrightnessTime) {
@@ -413,7 +418,18 @@ void updateDisplayBrightness() {
     } else {
         alarmBrightness = config.nightBrightnessAlarm->getBrightness();
     }
-
+/*
+    Serial.print("Current Brightness: ");
+    Serial.print(brightness);
+    Serial.print(" New Brightness: ");
+    Serial.print(alarmBrightness);
+    Serial.print(" Current Time: ");
+    Serial.print(currentDisplayTime);
+    Serial.print(" Day Time: ");
+    Serial.print(dayBrightnessTime);
+    Serial.print(" Night Time: ");
+    Serial.print(nightBrightnessTime);
+*/
     if (alarmBrightness == brightness) {
         return;
     }
@@ -470,19 +486,29 @@ void updateDisplayTime() {
     currentWeekDay = currentTimeinfo->tm_wday;
     // Set Sunday appropriately
     if (currentWeekDay == 0) currentWeekDay = 7;
-    
+
+    // convert to 12 hour time if twelvehourMode is on
+    bool twelvehourMode = config.gettwelvehourMode();
+    if (twelvehourMode == true) {
+        if (displayHour == 0) {
+            displayHour = 12;
+        }
+        if (displayHour >= 13) {
+            displayHour = (displayHour - 12);
+        }
+    }
+    //config.settwelvehourMode(twelvehourMode);
+
     currentDisplayTime = displayHour * 100 + displayMinute;
 }
 
 // Main loop
-void loop() {
+void loop() {    
     server.handleClient();
     yield();
 
     MDNS.update();
     yield();
-
-    if (isInitialising) return;
 
     updateDisplayTime();
     yield();
@@ -510,6 +536,8 @@ void loop() {
     //checkButtons();
 
     updateDisplayBrightness();
+    
+    ArduinoOTA.handle();
 }
 
 // Check the button states and perform the necessary actions
@@ -539,34 +567,47 @@ void checkButtons() {
 
 // Displays a spinner
 void displayWaiting() {
-  Serial.println("displayWaiting");
-
-  for (uint8_t k = 0; k < 3; k++) {
-    for (uint8_t i = 0; i < 4; i++) {
-      for (uint8_t j = 1; j < 0x40; j = j << 1) {
-        Disp4Seg.setSegments(j, i);
-        delay(50);
-        yield();
-      }
-
-      Disp4Seg.setSegments(0, i);
+    Serial.println("displayWaiting");
+    for (uint8_t k = 0; k < 3; k++) {
+        for (uint8_t i = 0; i < 4; i++) {
+            for (uint8_t j = 1; j < 0x40; j = j << 1) {
+                Disp4Seg.setSegments(j, i);
+                delay(50);
+                yield();
+            }
+        Disp4Seg.setSegments(0, i);
+        }
     }
-  }
 }
-
 
 // Get the time and convert it to the current timezone. Display it on the segment display
 void displayTime() {
-	uint8_t digit0 = (currentDisplayTime / 1000) % 10;
-	uint8_t digit1 = (currentDisplayTime / 100) % 10;
-	uint8_t digit2 = (currentDisplayTime / 10) % 10;
-	uint8_t digit3 = currentDisplayTime % 10;
+    uint8_t digit0 = (currentDisplayTime / 1000) % 10;
+    uint8_t digit1 = (currentDisplayTime / 100) % 10;
+    uint8_t digit2 = (currentDisplayTime / 10) % 10;
+    uint8_t digit3 = currentDisplayTime % 10;
+    uint8_t currentSec = currentTimeinfo->tm_sec;
+    bool colonOn = false;
 
-    Disp4Seg.setDisplayDigit(digit0, 0);
+    // make the colon blink
+    if ((currentSec & 0x01) == 0) {
+        colonOn = true;
+    }
+
+    // if twelvehourMode is on and the first digit is zero, make it blank
+    bool twelvehourMode = config.gettwelvehourMode();
+    if ((twelvehourMode == true) && (digit0 == 0)) {
+        Disp4Seg.setSegments(0, 0);
+    } else {
+        Disp4Seg.setDisplayDigit(digit0, 0);
+    }
+    //config.settwelvehourMode(twelvehourMode);
+
     Disp4Seg.setDisplayDigit(digit1, 1);
     // Add the colon on to the last 2 digits
-    Disp4Seg.setDisplayDigit(digit2, 2, true);
-    Disp4Seg.setDisplayDigit(digit3, 3, true);
+    Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
+    Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
+
     yield();
 }
 
