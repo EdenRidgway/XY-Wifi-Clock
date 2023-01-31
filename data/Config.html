@@ -29,7 +29,7 @@
         <label>Timezone</label>
 		<select id="timezone" name="timezone"></select><br/><br/>
 		<label>12 Hour Mode</label>
-		<input id="TwelvehourMode" name="TwelvehourMode" type="checkbox"><br/><br/>
+		<input id="twelvehourMode" name="twelvehourMode" type="checkbox"><br/><br/>
 		
 		<h3>Brightness Settings</h3>
 		<div id="day-brightness-section">
@@ -111,7 +111,7 @@ function loadConfig() {
 function displayConfig(config) {
 	document.getElementById("deviceName").value = config.deviceName;
 	document.getElementById("timezone").value = config.timezone;
-	document.getElementById("TwelvehourMode").checked = config.TwelvehourMode;
+	document.getElementById("twelvehourMode").checked = config.TwelvehourMode;
 	
 	if (config.dayBrightness) {
 		setBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
@@ -156,7 +156,7 @@ function getConfigFromForm() {
 	data = {
 		deviceName: document.getElementById("deviceName").value,
 		timezone: document.getElementById("timezone").value,
-		TwelvehourMode: document.getElementById("TwelvehourMode").checked,
+		TwelvehourMode: document.getElementById("twelvehourMode").checked,
 		dayBrightness: { hour: 0, minute: 0, brightness: 4 },
 		nightBrightness: { hour: 0, minute: 0, brightness: 4 },
 		alarms: []
