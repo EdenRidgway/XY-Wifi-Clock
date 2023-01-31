@@ -90,7 +90,7 @@ var timezones = [];
 function mockConfigFetch() {
   return Promise.resolve({
 		json: () => Promise.resolve({ 
-			deviceName: "XY-Clock", timezone: "Europe/London", TwelvehourMode: false,
+			deviceName: "XY-Clock", timezone: "Europe/London", twelvehourMode: false,
 			dayBrightness: { hour: 06, minute: 0, brightness: 3 },
 			nightBrightness: { hour: 20, minute: 0, brightness: 6 },
 			alarms: [
@@ -111,7 +111,7 @@ function loadConfig() {
 function displayConfig(config) {
 	document.getElementById("deviceName").value = config.deviceName;
 	document.getElementById("timezone").value = config.timezone;
-	document.getElementById("twelvehourMode").checked = config.TwelvehourMode;
+	document.getElementById("twelvehourMode").checked = config.twelvehourMode;
 	
 	if (config.dayBrightness) {
 		setBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
@@ -156,7 +156,7 @@ function getConfigFromForm() {
 	data = {
 		deviceName: document.getElementById("deviceName").value,
 		timezone: document.getElementById("timezone").value,
-		TwelvehourMode: document.getElementById("twelvehourMode").checked,
+		twelvehourMode: document.getElementById("twelvehourMode").checked,
 		dayBrightness: { hour: 0, minute: 0, brightness: 4 },
 		nightBrightness: { hour: 0, minute: 0, brightness: 4 },
 		alarms: []
