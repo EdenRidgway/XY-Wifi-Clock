@@ -1,9 +1,9 @@
 // Distributed under AGPL v3 license. See license.txt
 
-// Need to install the WiFiManager library by tzapu (not the other ones)
-#include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
-#include <ArduinoOTA.h>  // https://github.com/jandrassy/ArduinoOTA
+// Need to install the WiFiManager library by tzapu (not the other ones) https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <WiFiManager.h>   // if using Arduino IDE, click here to search: http://librarymanager#WiFiManager_ESPx_tzapu
+#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson // if using Arduino IDE, click here to search: http://librarymanager#ArduinoJson
+#include <ArduinoOTA.h>  // https://github.com/jandrassy/ArduinoOTA // if using Arduino IDE, click here to search: http://librarymanager#ArduinoOTA
 
 //#include <ESP8266WiFi.h>
 
@@ -13,11 +13,8 @@ const int BUTTON_SET = 16;
 
 #include "pitches.h"
 
-// TM1650 Digital Display
-// Need to install Adafruit_GFX  // https://github.com/adafruit/Adafruit-GFX-Library
-// And TM16xx  // https://github.com/maxint-rd/TM16xx
-#include <Adafruit_GFX.h>
-#include <TM1650.h>
+#include <Adafruit_GFX.h> // Adafruit_GFX https://github.com/adafruit/Adafruit-GFX-Library // if using Arduino IDE, click here to search: http://librarymanager#Adafruit_GFX_graphics_core_library
+#include <TM1650.h> // TM1650 Digital Display https://github.com/maxint-rd/TM16xx // if using Arduino IDE, click here to search: http://librarymanager#TM16xx_LEDs_and_Buttons
 #include <TM16xxMatrixGFX.h>
 
 // I2C pins
@@ -31,13 +28,10 @@ TM1650 Disp4Seg(SDA_PIN, SCL_PIN);
 TM16xxMatrixGFX matrix(&Disp4Seg, MATRIX_NUMCOLUMNS, MATRIX_NUMROWS);    // TM16xx object, columns, rows#
 
 const int BUZZER_PIN = 5;
-// Need to install NTPClient by Fabrice Weinberg
 // Source for NTP with timezones: https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
 #include <WiFiUdp.h>
-#include <NTPClient.h>
-
-// Needs the time library  https://github.com/PaulStoffregen/Time
-#include <time.h>
+#include <NTPClient.h> // NTPClient by Fabrice Weinberg https://github.com/arduino-libraries/NTPClient // if using Arduino IDE, click here to search: http://librarymanager#NTPClient
+#include <time.h> // Time library  https://github.com/PaulStoffregen/Time  // if using Arduino IDE, click here to search: http://librarymanager#Timekeeping_functionality_for_Arduino
 
 //extern bool readyForNtp = false;
 
@@ -209,8 +203,6 @@ class Config {
              return TwelvehourMode;
         }
 };
-
-#include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
 
 Config config;
 
