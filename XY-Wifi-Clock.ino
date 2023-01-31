@@ -165,7 +165,7 @@ class Config {
 
     public:
         Alarm alarms[6]= { Alarm(), Alarm(), Alarm(), Alarm(), Alarm(), Alarm() };
-        bool TwelvehourMode;
+        bool twelvehourMode;
         
         BrightnessAlarm* dayBrightnessAlarm;
         BrightnessAlarm* nightBrightnessAlarm;
@@ -183,8 +183,8 @@ class Config {
             timezone = value;
         }
 
-        void setTwelvehourMode(bool value) {
-            TwelvehourMode = value;
+        void settwelvehourMode(bool value) {
+            twelvehourMode = value;
         }
 
         String getDeviceName() {
@@ -199,8 +199,8 @@ class Config {
             return timezone;
         }
 
-        bool getTwelvehourMode() {
-             return TwelvehourMode;
+        bool gettwelvehourMode() {
+             return twelvehourMode;
         }
 };
 
@@ -354,13 +354,13 @@ void setup() {
           delay(250);  
         }
 
-        bool TwelvehourMode = config.getTwelvehourMode();
-        if (not (TwelvehourMode == true || TwelvehourMode == false)) {
-            TwelvehourMode = false;
+        bool twelvehourMode = config.gettwelvehourMode();
+        if (not (twelvehourMode == true || twelvehourMode == false)) {
+            twelvehourMode = false;
         }
         Serial.print("12 Hour Mode: ");
-        Serial.println(TwelvehourMode);
-        config.setTwelvehourMode(TwelvehourMode);
+        Serial.println(twelvehourMode);
+        config.settwelvehourMode(twelvehourMode);
 
         updateDisplayBrightness();
 
@@ -487,9 +487,9 @@ void updateDisplayTime() {
     // Set Sunday appropriately
     if (currentWeekDay == 0) currentWeekDay = 7;
 
-    // convert to 12 hour time if TwelvehourMode is on
-    bool TwelvehourMode = config.getTwelvehourMode();
-    if (TwelvehourMode == true) {
+    // convert to 12 hour time if twelvehourMode is on
+    bool twelvehourMode = config.gettwelvehourMode();
+    if (twelvehourMode == true) {
         if (displayHour == 0) {
             displayHour = 12;
         }
@@ -497,7 +497,7 @@ void updateDisplayTime() {
             displayHour = (displayHour - 12);
         }
     }
-    //config.setTwelvehourMode(TwelvehourMode);
+    //config.settwelvehourMode(twelvehourMode);
 
     currentDisplayTime = displayHour * 100 + displayMinute;
 }
@@ -594,14 +594,14 @@ void displayTime() {
         colonOn = true;
     }
 
-    // if TwelvehourMode is on and the first digit is zero, make it blank
-    bool TwelvehourMode = config.getTwelvehourMode();
-    if ((TwelvehourMode == true) && (digit0 == 0)) {
+    // if twelvehourMode is on and the first digit is zero, make it blank
+    bool twelvehourMode = config.gettwelvehourMode();
+    if ((twelvehourMode == true) && (digit0 == 0)) {
         Disp4Seg.setSegments(0, 0);
     } else {
         Disp4Seg.setDisplayDigit(digit0, 0);
     }
-    //config.setTwelvehourMode(TwelvehourMode);
+    //config.settwelvehourMode(twelvehourMode);
 
     Disp4Seg.setDisplayDigit(digit1, 1);
     // Add the colon on to the last 2 digits
