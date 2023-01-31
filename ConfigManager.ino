@@ -45,6 +45,7 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 
     config.setDeviceName(json["deviceName"]);
     config.setTimezone(json["timezone"]);
+    config.setTwelvehourMode(json["TwelvehourMode"].as<bool>());
 
     // Set defaults
     if (!config.getDeviceName()) {
@@ -53,6 +54,10 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 
     if (!config.getTimezone()) {
         config.setTimezone("Europe/London");
+    }
+
+    if (!config.getTwelvehourMode()) {
+        config.setTwelvehourMode(false);
     }
     
     if (json["dayBrightness"])
@@ -114,6 +119,7 @@ DynamicJsonDocument convertConfigToJson() {
 
     doc["deviceName"] = config.getDeviceName();
     doc["timezone"] = config.getTimezone();
+    doc["TwelvehourMode"] = config.getTwelvehourMode();
     
     doc["dayBrightness"] = doc.createNestedObject();
     doc["dayBrightness"]["hour"] = config.dayBrightnessAlarm->getHour();
