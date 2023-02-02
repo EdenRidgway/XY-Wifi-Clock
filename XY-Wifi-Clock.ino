@@ -16,19 +16,23 @@ const int BUTTON_SET = 16;
 #include <Adafruit_GFX.h> // Adafruit_GFX https://github.com/adafruit/Adafruit-GFX-Library // if using Arduino IDE, click here to search: http://librarymanager#Adafruit_GFX_graphics_core_library
 #include <TM1650.h> // TM1650 Digital Display https://github.com/maxint-rd/TM16xx // if using Arduino IDE, click here to search: http://librarymanager#TM16xx_LEDs_and_Buttons
 #include <TM16xxMatrixGFX.h>
+#include <TM16xxDisplay.h>
 
 // I2C pins
 const int SCL_PIN = 12;
 const int SDA_PIN = 13;
 
+#define NUM_DIGITS 4
+
 TM1650 Disp4Seg(SDA_PIN, SCL_PIN);
+TM16xxDisplay display(&Disp4Seg, NUM_DIGITS);
 
 #define MATRIX_NUMCOLUMNS 5
 #define MATRIX_NUMROWS 3
 TM16xxMatrixGFX matrix(&Disp4Seg, MATRIX_NUMCOLUMNS, MATRIX_NUMROWS);    // TM16xx object, columns, rows#
 
 const int BUZZER_PIN = 5;
-// Source for NTP with timezones: https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
+
 #include <WiFiUdp.h>
 #include <NTPClient.h> // NTPClient by Fabrice Weinberg https://github.com/arduino-libraries/NTPClient // if using Arduino IDE, click here to search: http://librarymanager#NTPClient
 #include <time.h> // Time library  https://github.com/PaulStoffregen/Time  // if using Arduino IDE, click here to search: http://librarymanager#Timekeeping_functionality_for_Arduino
@@ -55,6 +59,7 @@ uint16_t currentDisplayTime = 0;
 uint8_t displayHour = 0;
 uint8_t displayMinute = 0;
 uint8_t currentWeekDay = 0;
+bool isAm = false;
 
 class Alarm {
     protected:
@@ -282,6 +287,8 @@ ESP8266WebServer server(80);
 
 String posixTimezoneText;
 
+bool isDisplayingScrollingText = false;
+
 // Main setup of clock
 void setup() {
     Serial.begin(115200);
@@ -393,8 +400,54 @@ void setup() {
         });
         ArduinoOTA.begin();
 
+        // Display IP Address
+        displayIpAddress();
+        
         startWebServer();
     }
+}
+
+/* Displays Scrolling Text */
+void displayScrollingText(String text) {
+    isDisplayingScrollingText = true;
+    
+    int endPos = 0-text.length()-1;
+
+    Serial.print("Displaying text ");
+    Serial.print(text.length());
+    Serial.print(" characters long: ");
+    Serial.print(text);
+    Serial.print(" End cursor pos: ");
+    Serial.println(endPos);
+
+    for (int cursorPosition = 0; cursorPosition > endPos; cursorPosition--) {
+        Serial.print("Cursor Position: ");
+        Serial.println(cursorPosition);
+
+        display.setCursor(cursorPosition);
+        display.println(text);
+        delay(500);
+        display.clear();
+    }
+    
+    isDisplayingScrollingText = false;
+}
+
+void displayIpAddress() {
+    isDisplayingScrollingText = true;
+    
+    display.println("IP");
+    delay(1500);
+        
+    IPAddress ipAddress = WiFi.localIP();
+        
+    for (int i=0; i < 4; i++) {
+        display.println(ipAddress[i]);
+        delay(1500);
+        yield();
+    }
+    
+    isDisplayingScrollingText = false;
 }
 
 void updateDisplayBrightness() {    
@@ -418,18 +471,7 @@ void updateDisplayBrightness() {
     } else {
         alarmBrightness = config.nightBrightnessAlarm->getBrightness();
     }
-/*
-    Serial.print("Current Brightness: ");
-    Serial.print(brightness);
-    Serial.print(" New Brightness: ");
-    Serial.print(alarmBrightness);
-    Serial.print(" Current Time: ");
-    Serial.print(currentDisplayTime);
-    Serial.print(" Day Time: ");
-    Serial.print(dayBrightnessTime);
-    Serial.print(" Night Time: ");
-    Serial.print(nightBrightnessTime);
-*/
+
     if (alarmBrightness == brightness) {
         return;
     }
@@ -465,13 +507,6 @@ void checkAlarms() {
             soundAlarm();
         }
     }
-    /*
-    if (config.dayBrightnessAlarm->hasAlarmTriggered(displayHour, displayMinute, currentWeekDay) || 
-        config.nightBrightnessAlarm->hasAlarmTriggered(displayHour, displayMinute, currentWeekDay)) {
-        
-        updateDisplayBrightness();
-    }
-    */
 }
 
 /* Updates the display time */
@@ -575,13 +610,15 @@ void displayWaiting() {
                 delay(50);
                 yield();
             }
-        Disp4Seg.setSegments(0, i);
+            Disp4Seg.setSegments(0, i);
         }
     }
 }
 
 // Get the time and convert it to the current timezone. Display it on the segment display
 void displayTime() {
+    if (isDisplayingScrollingText) return;
+    
     uint8_t digit0 = (currentDisplayTime / 1000) % 10;
     uint8_t digit1 = (currentDisplayTime / 100) % 10;
     uint8_t digit2 = (currentDisplayTime / 10) % 10;
@@ -594,16 +631,18 @@ void displayTime() {
         colonOn = true;
     }
 
+    isAm = currentDisplayTime < 1200;
+    
     // if twelvehourMode is on and the first digit is zero, make it blank
-    bool twelvehourMode = config.gettwelvehourMode();
-    if ((twelvehourMode == true) && (digit0 == 0)) {
+    bool twelveHourMode = config.gettwelvehourMode();
+        
+    if ((twelveHourMode == true) && (digit0 == 0)) {
         Disp4Seg.setSegments(0, 0);
     } else {
         Disp4Seg.setDisplayDigit(digit0, 0);
     }
-    //config.settwelvehourMode(twelvehourMode);
-
-    Disp4Seg.setDisplayDigit(digit1, 1);
+    
+    Disp4Seg.setDisplayDigit(digit1, 1, isAm && twelveHourMode);
     // Add the colon on to the last 2 digits
     Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
     Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
