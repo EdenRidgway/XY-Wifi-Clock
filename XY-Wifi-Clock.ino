@@ -608,7 +608,7 @@ void loop() {
     yield();
 }
 
-void click(Button2& btn) {
+void click(Button2& btn) { // these clicks can be pretty short!
     if (btn == buttonUp) {
         Serial.println("Up clicked");
         displaySomething("UP");
@@ -623,7 +623,7 @@ void click(Button2& btn) {
     }
 }
 
-void longClick(Button2& btn) {
+void longClick(Button2& btn) { // these clicks can be short or long!
     unsigned int timeBtn = btn.wasPressedFor();
     currentTime = ((int)(millis()) / 1000);
     if (btn == buttonUp) {
