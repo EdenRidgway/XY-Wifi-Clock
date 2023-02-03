@@ -7,10 +7,6 @@
 
 //#include <ESP8266WiFi.h>
 
-const int BUTTON_UP = 10;
-const int BUTTON_DOWN = 9;
-const int BUTTON_SET = 16;
-
 #include "pitches.h"
 
 #include <Adafruit_GFX.h> // Adafruit_GFX https://github.com/adafruit/Adafruit-GFX-Library // if using Arduino IDE, click here to search: http://librarymanager#Adafruit_GFX_graphics_core_library
@@ -47,6 +43,12 @@ enum ClockState {
   DisplayingTime = 4
 };
 
+#include <Button2.h> // Button2 by Lennart Hennigs https://github.com/LennartHennigs/Button2 // if using Arduino IDE, click here to search: http://librarymanager#Button2
+#define buttonUpPin 10
+#define buttonDownPin 9
+#define buttonSetPin 16
+Button2 buttonUp, buttonDown, buttonSet;
+
 ClockState currentClockState = WaitingForWifi;
 
 bool hasNetworkConnection = false;
@@ -61,8 +63,9 @@ uint8_t displayMinute = 0;
 uint8_t currentWeekDay = 0;
 bool isPm = false;
 bool setHotspot = false;
+bool setHotspotx = false;
 uint16_t setHotspotTime = -1;
-// ***** Note: the way this is currently handled will break if it happens over midnight?  I tried now() style but couldn't get it to compile... Help?  (Search for the 5 stars)
+uint16_t currentTime = 0; // ***** Note: the way this is currently handled uses millis/1000...  I tried now() style but couldn't get it to compile... Help?  (Search for the 5 stars)
 
 class Alarm {
     protected:
@@ -301,9 +304,16 @@ void setup() {
     
     pinMode(BUZZER_PIN, OUTPUT);
 
-    pinMode(BUTTON_UP, INPUT);
-    pinMode(BUTTON_DOWN, INPUT);
-    pinMode(BUTTON_SET, INPUT);
+    //Button2 Setup Handlers
+    buttonUp.begin(buttonUpPin);
+    buttonUp.setClickHandler(click);
+    buttonUp.setLongClickHandler(longClick);
+    buttonDown.begin(buttonDownPin);
+    buttonDown.setClickHandler(click);
+    buttonDown.setLongClickHandler(longClick);
+    buttonSet.begin(buttonSetPin);
+    buttonSet.setClickHandler(click);
+    buttonSet.setLongClickHandler(longClick);
 
     Serial.println("Setting up TM1650 Display");
     
@@ -448,6 +458,16 @@ void displayIpAddress() {
     isDisplayingScrollingText = false;
 }
 
+void displaySomething(String text) {
+    isDisplayingScrollingText = true;
+
+    display.println(text);
+    delay(750);
+    yield();
+
+    isDisplayingScrollingText = false;
+}
+
 void updateDisplayBrightness() {    
     // time_t rawtime; 
     // time(&rawtime); 
@@ -535,7 +555,6 @@ void updateDisplayTime() {
             isPm = true;
         }
     }
-    //config.settwelvehourMode(twelvehourMode);
 
     currentDisplayTime = displayHour * 100 + displayMinute;
 }
@@ -573,12 +592,14 @@ void loop() {
     checkAlarms();
     yield();
 
-    //checkButtons();
-    //yield();
-    // There appears to be no debounce... so pressing a button results in weird stuff...
-    
-    checkHotspotOpen();
+    buttonUp.loop();
+    buttonDown.loop();
+    buttonSet.loop();
     yield();
+
+    // still broken... something wrong with my logic...
+    // checkHotspotOpen();
+    // yield();
     
     updateDisplayBrightness();
     yield();
@@ -587,47 +608,65 @@ void loop() {
     yield();
 }
 
-// Check the button states and perform the necessary actions
-void checkButtons() {
-    int buttonUpState = digitalRead(BUTTON_UP);
-    int buttonDownState = digitalRead(BUTTON_DOWN);
-    int buttonSetState = digitalRead(BUTTON_SET);
-
-    if (buttonUpState == LOW) {
-        Serial.print("Up button pushed");
-        displayScrollingText("UP");
-        //brightness++;
-        //if (brightness > 7) brightness = 7;
-
-        //Serial.print("Setting brightness ");
-        //Serial.println(brightness);
-        //matrix.setIntensity(brightness);
+void click(Button2& btn) {
+    if (btn == buttonUp) {
+        Serial.println("Up clicked");
+        displaySomething("UP");
     }
+    else if (btn == buttonDown) {
+        Serial.println("Down clicked");
+        displaySomething("DN");
+    }
+    else if (btn == buttonSet) {
+        Serial.println("Set clicked");
+        displaySomething("SET");
+    }
+}
 
-    if (buttonDownState == LOW) {
-        delay(200); // hold the set button!
-        if (buttonDownState == LOW) {
-            Serial.print("Down button held");
-            displayScrollingText("DN");
+void longClick(Button2& btn) {
+    unsigned int timeBtn = btn.wasPressedFor();
+    currentTime = ((int)(millis()) / 1000);
+    if (btn == buttonUp) {
+        if (timeBtn > 3000) {
+            displaySomething("UP30");
+        } else if (timeBtn > 2000) {
+            displaySomething("UP20");
+        } else if (timeBtn > 1500) {
+            displaySomething("UP15");
+        } else if (timeBtn > 1000) {
+            displaySomething("UP10");
+        } else if (timeBtn > 500) {
+            displaySomething("UP05"); 
+        } else {
+            displaySomething("UP-");
         }
-        //brightness--;
-        //if (brightness < 1) brightness = 1;
-
-        //Serial.print("Setting brightness ");
-        //Serial.println(brightness);
-        //matrix.setIntensity(brightness);
     }
-
-    if (buttonSetState == LOW) {
-        delay(500); // hold the set button!
-        if (buttonSetState == LOW) {
-            Serial.print("Set button held");
+    else if (btn == buttonDown) {
+        Serial.println("Down long clicked");
+        if (timeBtn > 3000) {
+            displaySomething("DN30");
+        } else if (timeBtn > 2000) {
+            displaySomething("DN20");
+        } else if (timeBtn > 1500) {
+            displaySomething("DN15");
+        } else if (timeBtn > 1000) {
+            displaySomething("DN10");
+        } else if (timeBtn > 500) {
+            displaySomething("DN05"); 
+        } else {
+            displaySomething("DN-");
+        }
+    }
+    else if (btn == buttonSet) {
+        if (timeBtn > 3000) {
             if (setHotspot == false) {
-                setHotspotTime = currentDisplayTime; // ***** needs fix
+                setHotspotTime = currentTime; // ***** needs fix
             }
             else {
-                setHotspotTime = (currentDisplayTime - 1000); // ***** needs fix
-                }
+                setHotspotTime = (currentTime - 1800); // 30 minutes ago
+            }
+        } else {
+            displayIpAddress();
         }
     }
 }
@@ -682,25 +721,27 @@ void displayTime() {
 
 void checkHotspotOpen() {
     // the Hotspot should stay open for 5 minutes... we set setHotspotTime = currentDisplayTime when the Set Button was pressed
+    currentTime = ((int)(millis()) / 1000); // check that time is within set time + 5 mins ***** needs fix
     if (setHotspotTime != -1) {
-        if (setHotspotTime <= (currentDisplayTime + 500)) {  // check that startHotspotTime is within set time + 5 mins ***** needs fix
+        if ((currentTime + (60*5)) < setHotspotTime) {
             if (setHotspot == false) { // set up hot spot (once)
-                setHotspot = true;
+                setHotspotx = true;
+                displayScrollingText("HOTSPOT ON");
                 Serial.print("Setting up hotspot at time:");
                 Serial.print(currentDisplayTime);
                 WiFi.mode(WIFI_AP_STA);
                 delay(2000);
                 WiFi.softAP(config.getDeviceName());
-                displayScrollingText("HOTSPOT");
             }
             else {
                 Serial.print("Shutting down hotspot at time:");
                 Serial.print(currentDisplayTime);
                 WiFi.mode(WIFI_STA);
-                setHotspot = false;
+                setHotspotx = false;
                 setHotspotTime = -1;
                 displayScrollingText("HOTSPOT OFF");
             }
+            setHotspot = setHotspotx;
         }
     }
 
