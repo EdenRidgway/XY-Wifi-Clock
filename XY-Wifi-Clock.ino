@@ -658,7 +658,7 @@ void longClick(Button2& btn) {
         }
     }
     else if (btn == buttonSet) {
-        if (timeBtn > 3000) {
+        if (timeBtn > 3000) { // hold the set button for longer than 3s to turn the hotspot on/off
             if (setHotspot == false) {
                 setHotspotTime = currentTime; // ***** needs fix
             }
@@ -666,7 +666,7 @@ void longClick(Button2& btn) {
                 setHotspotTime = (currentTime - 1800); // 30 minutes ago
             }
         } else {
-            displayIpAddress();
+            displayIpAddress(); // long-click the set button to show the IP address
         }
     }
 }
