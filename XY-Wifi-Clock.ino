@@ -59,7 +59,7 @@ uint16_t currentDisplayTime = 0;
 uint8_t displayHour = 0;
 uint8_t displayMinute = 0;
 uint8_t currentWeekDay = 0;
-bool isAm = false;
+bool isPm = false;
 bool setHotspot = false;
 uint16_t setHotspotTime = -1;
 // ***** Note: the way this is currently handled will break if it happens over midnight?  I tried now() style but couldn't get it to compile... Help?  (Search for the 5 stars)
@@ -521,13 +521,18 @@ void updateDisplayTime() {
     if (currentWeekDay == 0) currentWeekDay = 7;
 
     // convert to 12 hour time if twelvehourMode is on
+    isPm = false;
     bool twelvehourMode = config.gettwelvehourMode();
     if (twelvehourMode == true) {
+        if (displayHour == 12) {
+            isPm = true;
+        }
         if (displayHour == 0) {
             displayHour = 12;
         }
         if (displayHour >= 13) {
             displayHour = (displayHour - 12);
+            isPm = true;
         }
     }
     //config.settwelvehourMode(twelvehourMode);
@@ -657,8 +662,6 @@ void displayTime() {
     if ((currentSec & 0x01) == 0) {
         colonOn = true;
     }
-
-    isAm = currentDisplayTime < 1200;
     
     // if twelvehourMode is on and the first digit is zero, make it blank
     bool twelveHourMode = config.gettwelvehourMode();
@@ -669,7 +672,7 @@ void displayTime() {
         Disp4Seg.setDisplayDigit(digit0, 0);
     }
     
-    Disp4Seg.setDisplayDigit(digit1, 1, isAm && twelveHourMode);
+    Disp4Seg.setDisplayDigit(digit1, 1, isPm && twelveHourMode);
     // Add the colon on to the last 2 digits
     Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
     Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
