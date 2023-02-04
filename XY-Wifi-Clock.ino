@@ -609,7 +609,7 @@ void loop() {
 void click(Button2& btn) { // these clicks can be pretty short! (so handling same as short-presses)
     if (btn == buttonUp) {
         Serial.println("Up button clicked");
-        displaySomething("DN");
+        displaySomething("UP");
         increaseBrightness();
     }
     else if (btn == buttonDown) {
