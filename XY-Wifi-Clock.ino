@@ -63,9 +63,8 @@ uint8_t displayMinute = 0;
 uint8_t currentWeekDay = 0;
 bool isPm = false;
 bool setHotspot = false;
-bool setHotspotx = false;
-uint16_t setHotspotTime = -1;
-uint16_t currentTime = 0; // ***** Note: the way this is currently handled uses millis/1000...  I tried now() style but couldn't get it to compile... Help?  (Search for the 5 stars)
+unsigned long setHotspotTime = 0;
+unsigned long setHotspotDuration = 1000*60*5; // Hotspot open for 5 mins
 
 class Alarm {
     protected:
@@ -408,8 +407,8 @@ void setup() {
         });
         ArduinoOTA.begin();
 
-        // Display IP Address
-        displayIpAddress();
+        // Display IP Address - uncomment if you want to see the IP at boot
+        // displayIpAddress();
         
         startWebServer();
     }
@@ -597,9 +596,8 @@ void loop() {
     buttonSet.loop();
     yield();
 
-    // still broken... something wrong with my logic...
-    // checkHotspotOpen();
-    // yield();
+    checkHotspotOpen();
+    yield();
     
     updateDisplayBrightness();
     yield();
@@ -608,67 +606,78 @@ void loop() {
     yield();
 }
 
-void click(Button2& btn) { // these clicks can be pretty short!
+void click(Button2& btn) { // these clicks can be pretty short! (so handling same as short-presses)
     if (btn == buttonUp) {
-        Serial.println("Up clicked");
-        displaySomething("UP");
+        Serial.println("Up button clicked");
+        displaySomething("DN");
+        increaseBrightness();
     }
     else if (btn == buttonDown) {
-        Serial.println("Down clicked");
+        Serial.println("Down button clicked");
         displaySomething("DN");
+        decreaseBrightness();
     }
     else if (btn == buttonSet) {
-        Serial.println("Set clicked");
-        displaySomething("SET");
+        Serial.println("Set button clicked");
+        displayIpAddress();
     }
 }
 
-void longClick(Button2& btn) { // these clicks can be short or long!
+void longClick(Button2& btn) { // these clicks can be short (0.5s~) or long (and can be measured in any time more than 0.2s?)
     unsigned int timeBtn = btn.wasPressedFor();
-    currentTime = ((int)(millis()) / 1000);
     if (btn == buttonUp) {
         if (timeBtn > 3000) {
+            Serial.println("Up button long-pressed");
             displaySomething("UP30");
-        } else if (timeBtn > 2000) {
-            displaySomething("UP20");
-        } else if (timeBtn > 1500) {
-            displaySomething("UP15");
-        } else if (timeBtn > 1000) {
-            displaySomething("UP10");
-        } else if (timeBtn > 500) {
-            displaySomething("UP05"); 
         } else {
+            Serial.println("Up button short-pressed");
             displaySomething("UP-");
+            increaseBrightness();
         }
     }
     else if (btn == buttonDown) {
-        Serial.println("Down long clicked");
         if (timeBtn > 3000) {
+            Serial.println("Down button long-pressed");
             displaySomething("DN30");
-        } else if (timeBtn > 2000) {
-            displaySomething("DN20");
-        } else if (timeBtn > 1500) {
-            displaySomething("DN15");
-        } else if (timeBtn > 1000) {
-            displaySomething("DN10");
-        } else if (timeBtn > 500) {
-            displaySomething("DN05"); 
         } else {
+            Serial.println("Down button short-pressed");
             displaySomething("DN-");
+            decreaseBrightness();
         }
     }
     else if (btn == buttonSet) {
         if (timeBtn > 3000) { // hold the set button for longer than 3s to turn the hotspot on/off
+            Serial.print("Set button long-pressed");
             if (setHotspot == false) {
-                setHotspotTime = currentTime; // ***** needs fix
+                setHotspotTime = millis();
             }
             else {
-                setHotspotTime = (currentTime - 1800); // 30 minutes ago
+                setHotspotTime = (millis() - setHotspotDuration);
             }
         } else {
-            displayIpAddress(); // long-click the set button to show the IP address
+            Serial.print("Set button short-pressed");
+            displayIpAddress();
         }
     }
+}
+
+
+// These do not appear to be functional?
+void increaseBrightness() {
+    brightness++;
+    if (brightness > 7) brightness = 7;
+    Serial.print("Setting brightness ");
+    Serial.println(brightness);
+    matrix.setIntensity(brightness);
+}
+
+void decreaseBrightness() {
+    displaySomething("-");
+    brightness--;
+    if (brightness < 1) brightness = 1;
+    Serial.print("Setting brightness ");
+    Serial.println(brightness);
+    matrix.setIntensity(brightness);  
 }
 
 // Displays a spinner
@@ -720,31 +729,26 @@ void displayTime() {
 }
 
 void checkHotspotOpen() {
-    // the Hotspot should stay open for 5 minutes... we set setHotspotTime = currentDisplayTime when the Set Button was pressed
-    currentTime = ((int)(millis()) / 1000); // check that time is within set time + 5 mins ***** needs fix
-    if (setHotspotTime != -1) {
-        if ((currentTime + (60*5)) < setHotspotTime) {
-            if (setHotspot == false) { // set up hot spot (once)
-                setHotspotx = true;
-                displayScrollingText("HOTSPOT ON");
-                Serial.print("Setting up hotspot at time:");
-                Serial.print(currentDisplayTime);
-                WiFi.mode(WIFI_AP_STA);
-                delay(2000);
-                WiFi.softAP(config.getDeviceName());
-            }
-            else {
-                Serial.print("Shutting down hotspot at time:");
-                Serial.print(currentDisplayTime);
-                WiFi.mode(WIFI_STA);
-                setHotspotx = false;
-                setHotspotTime = -1;
-                displayScrollingText("HOTSPOT OFF");
-            }
-            setHotspot = setHotspotx;
+    // the Hotspot should stay open for the time specified by setHotspotDuration... set stopHotspotTime when the Set Button was pressed
+    if (setHotspotTime != 0) {
+        if ((millis() >= (setHotspotTime)) && (setHotspot == false)) {
+            Serial.print("Setting up hotspot at time:");
+            Serial.print(currentDisplayTime);
+            displayScrollingText("HOTSPOT ON");
+            WiFi.mode(WIFI_AP_STA);
+            delay(2000);
+            WiFi.softAP(config.getDeviceName());
+            setHotspot = true;
+        }
+        if ((millis() >= (setHotspotTime + setHotspotDuration)) && (setHotspot == true)) {
+            Serial.print("Shutting down hotspot at time:");
+            Serial.print(currentDisplayTime);
+            displayScrollingText("HOTSPOT OFF");
+            WiFi.mode(WIFI_STA);
+            setHotspotTime = 0;
+            setHotspot = false;
         }
     }
-
 }
 
 void beep(int note, int duration) {
