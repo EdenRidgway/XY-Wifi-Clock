@@ -672,7 +672,6 @@ void increaseBrightness() {
 }
 
 void decreaseBrightness() {
-    displaySomething("-");
     brightness--;
     if (brightness < 1) brightness = 1;
     Serial.print("Setting brightness ");
