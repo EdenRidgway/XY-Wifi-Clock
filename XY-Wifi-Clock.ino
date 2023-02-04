@@ -7,10 +7,6 @@
 
 //#include <ESP8266WiFi.h>
 
-const int BUTTON_UP = 10;
-const int BUTTON_DOWN = 9;
-const int BUTTON_SET = 16;
-
 #include "pitches.h"
 
 #include <Adafruit_GFX.h> // Adafruit_GFX https://github.com/adafruit/Adafruit-GFX-Library // if using Arduino IDE, click here to search: http://librarymanager#Adafruit_GFX_graphics_core_library
@@ -47,6 +43,12 @@ enum ClockState {
   DisplayingTime = 4
 };
 
+#include <Button2.h> // Button2 by Lennart Hennigs https://github.com/LennartHennigs/Button2 // if using Arduino IDE, click here to search: http://librarymanager#Button2
+#define buttonUpPin 10
+#define buttonDownPin 9
+#define buttonSetPin 16
+Button2 buttonUp, buttonDown, buttonSet;
+
 ClockState currentClockState = WaitingForWifi;
 
 bool hasNetworkConnection = false;
@@ -59,7 +61,10 @@ uint16_t currentDisplayTime = 0;
 uint8_t displayHour = 0;
 uint8_t displayMinute = 0;
 uint8_t currentWeekDay = 0;
-bool isAm = false;
+bool isPm = false;
+bool setHotspot = false;
+unsigned long setHotspotTime = 0;
+unsigned long setHotspotDuration = 1000*60*5; // Hotspot open for 5 mins
 
 class Alarm {
     protected:
@@ -298,9 +303,16 @@ void setup() {
     
     pinMode(BUZZER_PIN, OUTPUT);
 
-    //pinMode(BUTTON_UP, INPUT);
-    //pinMode(BUTTON_DOWN, INPUT);
-    //pinMode(BUTTON_SET, INPUT);
+    //Button2 Setup Handlers
+    buttonUp.begin(buttonUpPin);
+    buttonUp.setClickHandler(click);
+    buttonUp.setLongClickHandler(longClick);
+    buttonDown.begin(buttonDownPin);
+    buttonDown.setClickHandler(click);
+    buttonDown.setLongClickHandler(longClick);
+    buttonSet.begin(buttonSetPin);
+    buttonSet.setClickHandler(click);
+    buttonSet.setLongClickHandler(longClick);
 
     Serial.println("Setting up TM1650 Display");
     
@@ -322,11 +334,6 @@ void setup() {
         Serial.println("Failed to connect to Wifi Network");
     } else {
         Serial.println("Connected to Wifi Network");
-        /// Trying to allow the Portal to remain active...
-        // wifiManager.setConfigPortalBlocking(false);
-        // wifiManager.startConfigPortal();
-        // https://github.com/tzapu/WiFiManager/blob/master/examples/Super/OnDemandConfigPortal/OnDemandConfigPortal.ino
-        // WiFi.mode(WIFI_AP_STA);
 
         currentClockState = DisplayingTime;
 
@@ -400,8 +407,8 @@ void setup() {
         });
         ArduinoOTA.begin();
 
-        // Display IP Address
-        displayIpAddress();
+        // Display IP Address - uncomment if you want to see the IP at boot
+        // displayIpAddress();
         
         startWebServer();
     }
@@ -447,6 +454,16 @@ void displayIpAddress() {
         yield();
     }
     
+    isDisplayingScrollingText = false;
+}
+
+void displaySomething(String text) {
+    isDisplayingScrollingText = true;
+
+    display.println(text);
+    delay(750);
+    yield();
+
     isDisplayingScrollingText = false;
 }
 
@@ -523,16 +540,20 @@ void updateDisplayTime() {
     if (currentWeekDay == 0) currentWeekDay = 7;
 
     // convert to 12 hour time if twelvehourMode is on
+    isPm = false;
     bool twelvehourMode = config.gettwelvehourMode();
     if (twelvehourMode == true) {
+        if (displayHour == 12) {
+            isPm = true;
+        }
         if (displayHour == 0) {
             displayHour = 12;
         }
         if (displayHour >= 13) {
             displayHour = (displayHour - 12);
+            isPm = true;
         }
     }
-    //config.settwelvehourMode(twelvehourMode);
 
     currentDisplayTime = displayHour * 100 + displayMinute;
 }
@@ -568,36 +589,94 @@ void loop() {
     }
     
     checkAlarms();
-    //checkButtons();
+    yield();
 
+    buttonUp.loop();
+    buttonDown.loop();
+    buttonSet.loop();
+    yield();
+
+    checkHotspotOpen();
+    yield();
+    
     updateDisplayBrightness();
+    yield();
     
     ArduinoOTA.handle();
+    yield();
 }
 
-// Check the button states and perform the necessary actions
-void checkButtons() {
-    int buttonUpState = digitalRead(BUTTON_UP);
-    int buttonDownState = digitalRead(BUTTON_DOWN);
-    int buttonSetState = digitalRead(BUTTON_SET);
-
-    if (buttonUpState == LOW) {
-        brightness++;
-        if (brightness > 7) brightness = 7;
-
-        Serial.print("Setting brightness ");
-        Serial.println(brightness);
-        matrix.setIntensity(brightness);
+void click(Button2& btn) { // these clicks can be pretty short! (so handling same as short-presses)
+    if (btn == buttonUp) {
+        Serial.println("Up button clicked");
+        displaySomething("UP");
+        increaseBrightness();
     }
-
-    if (buttonDownState == LOW) {
-        brightness--;
-        if (brightness < 1) brightness = 1;
-
-        Serial.print("Setting brightness ");
-        Serial.println(brightness);
-        matrix.setIntensity(brightness);
+    else if (btn == buttonDown) {
+        Serial.println("Down button clicked");
+        displaySomething("DN");
+        decreaseBrightness();
     }
+    else if (btn == buttonSet) {
+        Serial.println("Set button clicked");
+        displayIpAddress();
+    }
+}
+
+void longClick(Button2& btn) { // these clicks can be short (0.5s~) or long (and can be measured in any time more than 0.2s?)
+    unsigned int timeBtn = btn.wasPressedFor();
+    if (btn == buttonUp) {
+        if (timeBtn > 3000) {
+            Serial.println("Up button long-pressed");
+            displaySomething("UP30");
+        } else {
+            Serial.println("Up button short-pressed");
+            displaySomething("UP-");
+            increaseBrightness();
+        }
+    }
+    else if (btn == buttonDown) {
+        if (timeBtn > 3000) {
+            Serial.println("Down button long-pressed");
+            displaySomething("DN30");
+        } else {
+            Serial.println("Down button short-pressed");
+            displaySomething("DN-");
+            decreaseBrightness();
+        }
+    }
+    else if (btn == buttonSet) {
+        if (timeBtn > 3000) { // hold the set button for longer than 3s to turn the hotspot on/off
+            Serial.print("Set button long-pressed");
+            if (setHotspot == false) {
+                setHotspotTime = millis();
+            }
+            else {
+                setHotspotTime = (millis() - setHotspotDuration);
+            }
+        } else {
+            Serial.print("Set button short-pressed");
+            displayIpAddress();
+        }
+    }
+}
+
+
+// These do not appear to be functional?
+void increaseBrightness() {
+    brightness++;
+    if (brightness > 7) brightness = 7;
+    Serial.print("Setting brightness ");
+    Serial.println(brightness);
+    matrix.setIntensity(brightness);
+}
+
+void decreaseBrightness() {
+    brightness--;
+    if (brightness < 1) brightness = 1;
+    Serial.print("Setting brightness ");
+    Serial.println(brightness);
+    matrix.setIntensity(brightness);  
 }
 
 // Displays a spinner
@@ -630,8 +709,6 @@ void displayTime() {
     if ((currentSec & 0x01) == 0) {
         colonOn = true;
     }
-
-    isAm = currentDisplayTime < 1200;
     
     // if twelvehourMode is on and the first digit is zero, make it blank
     bool twelveHourMode = config.gettwelvehourMode();
@@ -642,12 +719,35 @@ void displayTime() {
         Disp4Seg.setDisplayDigit(digit0, 0);
     }
     
-    Disp4Seg.setDisplayDigit(digit1, 1, isAm && twelveHourMode);
+    Disp4Seg.setDisplayDigit(digit1, 1, isPm && twelveHourMode);
     // Add the colon on to the last 2 digits
     Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
     Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
 
     yield();
+}
+
+void checkHotspotOpen() {
+    // the Hotspot should stay open for the time specified by setHotspotDuration... set stopHotspotTime when the Set Button was pressed
+    if (setHotspotTime != 0) {
+        if ((millis() >= (setHotspotTime)) && (setHotspot == false)) {
+            Serial.print("Setting up hotspot at time:");
+            Serial.print(currentDisplayTime);
+            displayScrollingText("HOTSPOT ON");
+            WiFi.mode(WIFI_AP_STA);
+            delay(2000);
+            WiFi.softAP(config.getDeviceName());
+            setHotspot = true;
+        }
+        if ((millis() >= (setHotspotTime + setHotspotDuration)) && (setHotspot == true)) {
+            Serial.print("Shutting down hotspot at time:");
+            Serial.print(currentDisplayTime);
+            displayScrollingText("HOTSPOT OFF");
+            WiFi.mode(WIFI_STA);
+            setHotspotTime = 0;
+            setHotspot = false;
+        }
+    }
 }
 
 void beep(int note, int duration) {
