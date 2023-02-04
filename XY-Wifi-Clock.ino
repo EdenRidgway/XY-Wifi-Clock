@@ -199,7 +199,7 @@ class Config {
 
         String getDeviceName() {
             if (deviceName == NULL || deviceName == "") {
-                deviceName = "XYClock";
+                deviceName = "XY-Clock";
             }
             
             return deviceName;
@@ -381,6 +381,7 @@ void setup() {
         Serial.println("Setup MDNS ");
 
          // Start the mDNS responder
+        
         if (MDNS.begin(config.getDeviceName())) {
             Serial.println("mDNS responder started");
         } else {
@@ -388,17 +389,21 @@ void setup() {
         }
 
         // ArduinoOTA Setup
+        ArduinoOTA.setHostname("XY-Clock");
         ArduinoOTA.onStart([]() {
             Serial.println("OTA Start");
+            displaySomething("ota");
         });
         ArduinoOTA.onEnd([]() {
             Serial.println("\nOTA End");
+            displaySomething("done");
         });
         ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
             Serial.printf("Update Progress: %u%%\r", (progress / (total / 100)));
         });
         ArduinoOTA.onError([](ota_error_t error) {
             Serial.printf("OTA Error[%u]: ", error);
+            displaySomething("fail");
             if (error == OTA_AUTH_ERROR) Serial.println("OTA Auth Failed");
             else if (error == OTA_BEGIN_ERROR) Serial.println("OTA Begin Failed");
             else if (error == OTA_CONNECT_ERROR) Serial.println("OTA Connect Failed");
@@ -411,6 +416,8 @@ void setup() {
         // displayIpAddress();
         
         startWebServer();
+        
+        MDNS.addService("http", "tcp", 80);
     }
 }
 

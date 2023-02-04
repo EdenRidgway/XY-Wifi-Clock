@@ -11,7 +11,7 @@ void loadSettings() {
     File configFile = SPIFFS.open("/config.json", "r");
 
     if (!configFile) {
-        config.setDeviceName("XYClock");
+        config.setDeviceName("XY-Clock");
         config.setTimezone("UTC");
 
         Serial.println("Failed to open config file for reading");
