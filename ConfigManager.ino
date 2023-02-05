@@ -11,7 +11,7 @@ void loadSettings() {
     File configFile = SPIFFS.open("/config.json", "r");
 
     if (!configFile) {
-        config.setDeviceName("XYClock");
+        config.setDeviceName("XY-Clock");
         config.setTimezone("UTC");
 
         Serial.println("Failed to open config file for reading");
@@ -49,7 +49,7 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 
     // Set defaults
     if (!config.getDeviceName()) {
-        config.setDeviceName("XYClock");
+        config.setDeviceName("XY-Clock");
     }
 
     if (!config.getTimezone()) {
