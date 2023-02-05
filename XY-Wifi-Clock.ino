@@ -56,6 +56,7 @@ WiFiManager wifiManager;
 
 struct tm* currentTimeinfo;
 uint16_t currentDisplayTime = 0;
+uint16_t currentDisplayTime12hr = 0;
 uint8_t displayHour = 0;
 uint8_t displayMinute = 0;
 uint8_t currentWeekDay = 0;
@@ -559,7 +560,9 @@ void updateDisplayTime() {
     // Set Sunday appropriately
     if (currentWeekDay == 0) currentWeekDay = 7;
 
-    // convert to 12 hour time if twelvehourMode is on
+    currentDisplayTime = displayHour * 100 + displayMinute;
+
+    // convert to 12 hour time if twelvehourMode is on and put it in a different variable
     isPm = false;
     bool twelvehourMode = config.gettwelvehourMode();
     if (twelvehourMode == true) {
@@ -573,9 +576,9 @@ void updateDisplayTime() {
             displayHour = (displayHour - 12);
             isPm = true;
         }
+    currentDisplayTime12hr = displayHour * 100 + displayMinute;
     }
 
-    currentDisplayTime = displayHour * 100 + displayMinute;
 }
 
 // Main loop
@@ -696,8 +699,16 @@ void displayWaiting() {
 void displayTime() {
     if (isDisplayingScrollingText) return;
     
-    uint8_t digit0 = (currentDisplayTime / 1000) % 10;
-    uint8_t digit1 = (currentDisplayTime / 100) % 10;
+    bool twelveHourMode = config.gettwelvehourMode();
+
+    // needed to separate 12hr Mode due to alarms relying on true 24hr time...
+    if ((twelveHourMode == true) {
+        uint8_t digit0 = (currentDisplayTime12hr / 1000) % 10;
+        uint8_t digit1 = (currentDisplayTime12hr / 100) % 10;
+    } else {
+        uint8_t digit0 = (currentDisplayTime / 1000) % 10;
+        uint8_t digit1 = (currentDisplayTime / 100) % 10;
+    }
     uint8_t digit2 = (currentDisplayTime / 10) % 10;
     uint8_t digit3 = currentDisplayTime % 10;
     uint8_t currentSec = currentTimeinfo->tm_sec;
@@ -709,8 +720,6 @@ void displayTime() {
     }
     
     // if twelvehourMode is on and the first digit is zero, make it blank
-    bool twelveHourMode = config.gettwelvehourMode();
-        
     if ((twelveHourMode == true) && (digit0 == 0)) {
         Disp4Seg.setSegments(0, 0);
     } else {
