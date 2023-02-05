@@ -80,6 +80,7 @@ void handleConfigJson() {
 void handlePostConfigJson() {
     Serial.println("Web POST handleConfigJson");
 
+    String previousDeviceName = config.getDeviceName();
     String previousTimezone = config.getTimezone();
 
     DynamicJsonDocument json(2048);
@@ -92,9 +93,21 @@ void handlePostConfigJson() {
 
     saveSettings();
 
+    String deviceName = config.getDeviceName();
     String timezone = config.getTimezone();
 
     server.send(200, "text/plain");
+
+    if (!deviceName.equalsIgnoreCase(previousDeviceName))
+    {
+        Serial.print("Device Name changed to: ");
+        Serial.println(deviceName);
+
+        Serial.println("Device Name change will trigger a device restart...");
+        ESP.restart();
+        delay(1000);
+    }
+
 
     if (!timezone.equalsIgnoreCase(previousTimezone))
     {

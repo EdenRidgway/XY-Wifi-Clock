@@ -54,8 +54,6 @@ ClockState currentClockState = WaitingForWifi;
 bool hasNetworkConnection = false;
 WiFiManager wifiManager;
 
-int displayBrightness = 1;
-
 struct tm* currentTimeinfo;
 uint16_t currentDisplayTime = 0;
 uint8_t displayHour = 0;
@@ -65,6 +63,10 @@ bool isPm = false;
 bool setHotspot = false;
 unsigned long setHotspotTime = 0;
 unsigned long setHotspotDuration = 1000*60*5; // Hotspot open for 5 mins
+uint8_t brightness = 4;
+uint8_t displayBrightness = 4;
+uint8_t previousAlarmBrightness = 4;
+int8_t myBrightness = 0;
 
 class Alarm {
     protected:
@@ -284,8 +286,6 @@ class Timezones {
         }
 };
 
-uint8_t brightness = 4;
-
 #include <ESP8266mDNS.h>
 
 ESP8266WebServer server(80);
@@ -377,19 +377,16 @@ void setup() {
         config.settwelvehourMode(twelvehourMode);
 
         updateDisplayBrightness();
-
-        Serial.println("Setup MDNS ");
-
-         // Start the mDNS responder
         
+         // Start the mDNS responder
+        Serial.println("Setup MDNS ");
         if (MDNS.begin(config.getDeviceName())) {
             Serial.println("mDNS responder started");
         } else {
             Serial.println("Error setting up MDNS responder!");
         }
 
-        // ArduinoOTA Setup
-        ArduinoOTA.setHostname("XY-Clock");
+        ArduinoOTA.setHostname((config.getDeviceName()).c_str()); // weird: this decides the mDNS name
         ArduinoOTA.onStart([]() {
             Serial.println("OTA Start");
             displaySomething("ota");
@@ -475,18 +472,11 @@ void displaySomething(String text) {
 }
 
 void updateDisplayBrightness() {    
-    // time_t rawtime; 
-    // time(&rawtime); 
-
-    // currentTimeinfo = localtime(&rawtime); 
-
-    // uint16_t displayTime = (int)currentTimeinfo->tm_hour * 100 + currentTimeinfo->tm_min;
     uint16_t dayBrightnessTime = (int)config.dayBrightnessAlarm->getHour() * 100 + config.dayBrightnessAlarm->getMinute();
     uint16_t nightBrightnessTime = (int)config.nightBrightnessAlarm->getHour() * 100 + config.nightBrightnessAlarm->getMinute();
 
     uint8_t alarmBrightness = 4;
     bool isDayMatch = false;
-
 
     // Use the day brightness if we are in range otherwise switch to night brightness
     if (currentDisplayTime >= dayBrightnessTime && currentDisplayTime < nightBrightnessTime) {
@@ -496,24 +486,47 @@ void updateDisplayBrightness() {
         alarmBrightness = config.nightBrightnessAlarm->getBrightness();
     }
 
-    if (alarmBrightness == brightness) {
+    if (previousAlarmBrightness != alarmBrightness)  {
+        myBrightness = 0;
+    }
+
+    if ((myBrightness + alarmBrightness) < 1)  {
+        myBrightness = 1 - alarmBrightness;
+    }
+    if ((myBrightness + alarmBrightness) > 7) {
+        myBrightness = 7 - alarmBrightness;
+    }
+
+    brightness = (alarmBrightness + myBrightness);
+
+    if (displayBrightness == brightness) {
         return;
     }
 
-    brightness = alarmBrightness;
-    
-    if (isDayMatch) {
-        Serial.println("Day brightness match");
-    } else {
-        Serial.println("Night brightness match");        
-    }
+    displayBrightness = brightness;
+    previousAlarmBrightness = alarmBrightness;
 
     Serial.print("Setting brightness to ");
-    Serial.println(brightness);
+    Serial.println(displayBrightness);
 
-    matrix.setIntensity(brightness);
+    matrix.setIntensity(displayBrightness);
     matrix.fillScreen(LOW);
     matrix.write();
+    // uncomment if you want to display the brightness level on the screen:
+    //Disp4Seg.setDisplayToDecNumber(displayBrightness);
+    //delay(300);
+}
+
+void increaseBrightness() {
+    myBrightness = myBrightness + 1;
+    Serial.print("Button brightness up");
+    Serial.println(myBrightness);
+}
+
+void decreaseBrightness() {
+    myBrightness = myBrightness - 1;
+    Serial.print("Button brightness down");
+    Serial.println(myBrightness);
 }
 
 // Called once the Wifi Manager saves the settings
@@ -578,15 +591,15 @@ void loop() {
 
     switch (currentClockState) {
         case WaitingForWifi:
-            Disp4Seg.setDisplayToDecNumber(8888);
+            displaySomething("net");
             break;
 
         case WaitingForNtp:
-            Disp4Seg.setDisplayToDecNumber(1111);
+            displaySomething("ntp");
             break;
 
         case NtpUpdateFailure:
-            Disp4Seg.setDisplayToDecNumber(9999);
+            displaySomething("-ntp");
             break;
 
         case DisplayingTime:
@@ -605,7 +618,7 @@ void loop() {
 
     checkHotspotOpen();
     yield();
-    
+
     updateDisplayBrightness();
     yield();
     
@@ -616,12 +629,10 @@ void loop() {
 void click(Button2& btn) { // these clicks can be pretty short! (so handling same as short-presses)
     if (btn == buttonUp) {
         Serial.println("Up button clicked");
-        displaySomething("UP");
         increaseBrightness();
     }
     else if (btn == buttonDown) {
         Serial.println("Down button clicked");
-        displaySomething("DN");
         decreaseBrightness();
     }
     else if (btn == buttonSet) {
@@ -635,20 +646,18 @@ void longClick(Button2& btn) { // these clicks can be short (0.5s~) or long (and
     if (btn == buttonUp) {
         if (timeBtn > 3000) {
             Serial.println("Up button long-pressed");
-            displaySomething("UP30");
+            displaySomething("UP--");
         } else {
             Serial.println("Up button short-pressed");
-            displaySomething("UP-");
             increaseBrightness();
         }
     }
     else if (btn == buttonDown) {
         if (timeBtn > 3000) {
             Serial.println("Down button long-pressed");
-            displaySomething("DN30");
+            displaySomething("dn--");
         } else {
             Serial.println("Down button short-pressed");
-            displaySomething("DN-");
             decreaseBrightness();
         }
     }
@@ -666,24 +675,6 @@ void longClick(Button2& btn) { // these clicks can be short (0.5s~) or long (and
             displayIpAddress();
         }
     }
-}
-
-
-// These do not appear to be functional?
-void increaseBrightness() {
-    brightness++;
-    if (brightness > 7) brightness = 7;
-    Serial.print("Setting brightness ");
-    Serial.println(brightness);
-    matrix.setIntensity(brightness);
-}
-
-void decreaseBrightness() {
-    brightness--;
-    if (brightness < 1) brightness = 1;
-    Serial.print("Setting brightness ");
-    Serial.println(brightness);
-    matrix.setIntensity(brightness);  
 }
 
 // Displays a spinner

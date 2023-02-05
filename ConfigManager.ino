@@ -49,7 +49,7 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 
     // Set defaults
     if (!config.getDeviceName()) {
-        config.setDeviceName("XYClock");
+        config.setDeviceName("XY-Clock");
     }
 
     if (!config.getTimezone()) {
