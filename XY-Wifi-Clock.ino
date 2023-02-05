@@ -699,26 +699,25 @@ void displayWaiting() {
 void displayTime() {
     if (isDisplayingScrollingText) return;
     
-    bool twelveHourMode = config.gettwelvehourMode();
-
-    // needed to separate 12hr Mode due to alarms relying on true 24hr time...
-    if ((twelveHourMode == true) {
-        uint8_t digit0 = (currentDisplayTime12hr / 1000) % 10;
-        uint8_t digit1 = (currentDisplayTime12hr / 100) % 10;
-    } else {
-        uint8_t digit0 = (currentDisplayTime / 1000) % 10;
-        uint8_t digit1 = (currentDisplayTime / 100) % 10;
-    }
+    uint8_t digit0 = (currentDisplayTime / 1000) % 10;
+    uint8_t digit1 = (currentDisplayTime / 100) % 10;
     uint8_t digit2 = (currentDisplayTime / 10) % 10;
     uint8_t digit3 = currentDisplayTime % 10;
     uint8_t currentSec = currentTimeinfo->tm_sec;
+    bool twelveHourMode = config.gettwelvehourMode();
     bool colonOn = false;
 
     // make the colon blink
     if ((currentSec & 0x01) == 0) {
         colonOn = true;
     }
-    
+
+    // needed to separate 12hr Mode due to alarms relying on true 24hr time...
+    if (twelveHourMode == true) {
+        digit0 = (currentDisplayTime12hr / 1000) % 10;
+        digit1 = (currentDisplayTime12hr / 100) % 10;
+    }
+
     // if twelvehourMode is on and the first digit is zero, make it blank
     if ((twelveHourMode == true) && (digit0 == 0)) {
         Disp4Seg.setSegments(0, 0);
