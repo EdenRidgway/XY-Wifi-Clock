@@ -67,6 +67,7 @@ You will need to install support for the ESP8266 chip in the Arduino IDE as well
 * TM16xx LEDs and Buttons by Maxint: https://github.com/maxint-rd/TM16xx
 * ArduinoOTA by JAndrassy: https://github.com/jandrassy/ArduinoOTA
 * Button2 by Lennart Hennigs: https://github.com/LennartHennigs/Button2
+* NTPClient by Fabrice Weinberg: https://github.com/arduino-libraries/NTPClient
 
 
 ## How to Use This Firmware
