@@ -32,8 +32,8 @@ The clock always tries to connect to wifi at power-up, but only for 15 seconds. 
 second time can be changed in the XY-Wifi-Clock.h file.  Whenever a successful NTP clock update occures, the clock chip time is reset.  Note
 that a CR927 battery must be installed for the clock to maintain time without power.
 
-One other change is to easily allow changing the wifi connection.  If you hold the SET button down during power-up, the currently saved
-wifi connection is erased and the XY-Clock hotspot is activated.  Accessing the hotspot at 192.168.4.1 allows you to pick a new wifi
-connection.  The display will show a count-up from 1 to 5, and then will display "conn".
+One other change is to easily allow changing the wifi connection.  If you hold the SET button down for 5 seconds during power-up, the currently
+saved wifi connection is erased and the XY-Clock hotspot is activated.  Accessing the hotspot at 192.168.4.1 allows you to pick a new wifi
+connection.  The display will show a count-down from 5 to 1, and then will display "conn".
 
 

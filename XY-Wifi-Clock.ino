@@ -496,11 +496,11 @@ void setup()
         delay(1000);
         if (digitalRead(buttonSetPin) == LOW)
         {
-            display.println("1");
+            display.println("5");
             delay(1000);
             if (digitalRead(buttonSetPin) == LOW)
             {
-                display.println("2");
+                display.println("4");
                 delay(1000);
                 if (digitalRead(buttonSetPin) == LOW)
                 {
@@ -508,11 +508,11 @@ void setup()
                     delay(1000);
                     if (digitalRead(buttonSetPin) == LOW)
                     {
-                        display.println("4");
+                        display.println("2");
                         delay(1000);
                         if (digitalRead(buttonSetPin) == LOW)
                         {
-                            display.println("5");
+                            display.println("1");
                             wifiManager.resetSettings();
                             delay(500);
                         }
