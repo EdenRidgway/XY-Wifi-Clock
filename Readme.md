@@ -7,7 +7,7 @@ This is a replacement firmware for the XY-Clock with Wifi (and similar variants)
 * A configuration web page that allows you to:
   * Change the timezone and device name and 12 or 24-hour mode
   * Change brightness based on the time of day
-  * Setup up to 6 alarms (to be activated on selected days)
+  * Setup up to 7 alarms (to be activated on selected days)
 * After a power failure it should be able to restore the correct time without any user intervention (saved Wifi credentials with specified timezone).
 
 ## To Do
@@ -42,6 +42,23 @@ After the first flash and upload of Sketch Data, you can use ArduinoOTA to updat
 
 Once the new firmware has been uploaded, disconnect GPIO0 from GND and reset the device to run it. You can just unplug the FTDI from the USB port and plug it back in which will resupply power to the board and allow you to use the Serial Monitor to debug it.
 
+### Hardware Interface
+
+| GPIO   | Usage         |
+| ------ | ------------- |
+| GPIO0  | Blue LED      |
+| GPIO2  | Red LED       |
+| GPIO4  | AM/PM LED     |
+| GPIO5  | Buzzer        |
+| GPIO9  | DOWN Button   |
+| GPIO10 | UP Button     |
+| GPIO12 | I2C Clock     |
+| GPIO13 | I2C Data      |
+| GPIO14 | Alarm Silence |
+| GPIO16 | SET Button    |
+
+![image](./Documentation/Images/New Connections.png)
+
 ### SPIFFs
 
 For now, this firmware requires that you add SPIFFs sketch data as a second step in the flashing process.  Use the same method as above to put the ESP into flashing mode.
@@ -66,8 +83,6 @@ You will need to install support for the ESP8266 chip in the Arduino IDE as well
 ## How to Use This Firmware
 
 * When using it for the first time it will create a Wifi access point called XYClock. Connect to this and select the wifi network and enter the password. It will then connect to the Wifi Network and sync the time with the pool.ntp.org Network Time Protocol server.
-
-<img src="https://camo.githubusercontent.com/25be9c499e4b7b5e01a8bce1c58263084c40f3b2c4647f5c9ef62d6d5a3c9792/687474703a2f2f692e696d6775722e636f6d2f595076573965716c2e706e67" height="300px" />
 
 * It uses the configured timezone to then display the correct time for your region. The Wifi clock will attempt to setup an mDNS entry for http://xy-clock.local or the device name you specify. While mDNS is apparently natively supported in Windows 10 build 1703 and later, if it doesn't work for you on Windows you may need to install the Apple Bonjour service ([download link](https://support.apple.com/kb/dl999)). That being said, you may have better success using the IP address of the clock.
 
