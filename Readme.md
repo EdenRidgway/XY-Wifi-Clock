@@ -13,13 +13,9 @@ This is a replacement firmware for the XY-Clock with Wifi (and similar variants)
 ## To Do
 
 Since this is early days in the development of the firmware there is still quite a bit to do, including the following in order of priority:
- - [ ] Add/improve functionality to the K_UP, K_DOWN and K_SET buttons
- - [ ] Use the LEDs to indicate state
- - [ ] Configure different alarm sounds
  - [ ] Create a 3D printable case for the clock
- - [ ] Leverage the other functionality available on the board, such as the DM1307Z+ real-time clock. 
  - [ ] Support playing music with versions that include an [MP3 Decoding board and Bluetooth 5.0](https://www.aliexpress.com/item/1005002933216217.html)
- 
+
 
 ## Flashing the Wifi Clock
 
@@ -35,7 +31,7 @@ You need to connect the FTDI to the board in the following way:
 | 2    | TX       | RX   |
 | 3    | RX       | TX   |
 | 4    | GPIO0    | GND when flashing firmware |
-| 5    | CHIP_EN  |      |
+| 5    | CHIP_EN  | not used     |
 | 6    | VCC      | VCC  |
 
 ![image](./Documentation/Images/Flashing-wifi-clock.jpg)
@@ -52,7 +48,7 @@ For now, this firmware requires that you add SPIFFs sketch data as a second step
 
 You will need the ESP8266 File System Uploader plugin for arduino IDE to upload the config web page to the device.  Get it here: https://github.com/esp8266/arduino-esp8266fs-plugin.  This plugin is only compatible with Legacy Arduino IDE 1.8 (not the newer 2).
 
-Once you have installed the plugin and restarted the IDE, open up the project and use the Tools -> ESP866 Sketch Data Upoad option to upload the data folder (including the Config.html) file. 
+Once you have installed the plugin and restarted the IDE, open up the project and use the Tools -> ESP866 Sketch Data Upoad option to upload the data folder (including the Config.html) file.
 
 When this project is migrated to platform.io in the future we will use this approach: https://docs.platformio.org/en/latest/platforms/espressif8266.html#uploading-files-to-filesystem so this step will just be part of the standard build and deployment process.
 
@@ -62,12 +58,9 @@ When this project is migrated to platform.io in the future we will use this appr
 You will need to install support for the ESP8266 chip in the Arduino IDE as well as the following libraries in order to get the firmware to compile:
 * WiFiManager by Tzapu: https://github.com/tzapu/WiFiManager
 * ArduinoJson: https://github.com/bblanchon/ArduinoJson
-* Time: https://github.com/PaulStoffregen/Time
 * Adafruit_GFX by Adafruit: https://github.com/adafruit/Adafruit-GFX-Library
 * TM16xx LEDs and Buttons by Maxint: https://github.com/maxint-rd/TM16xx
-* ArduinoOTA by JAndrassy: https://github.com/jandrassy/ArduinoOTA
 * Button2 by Lennart Hennigs: https://github.com/LennartHennigs/Button2
-* NTPClient by Fabrice Weinberg: https://github.com/arduino-libraries/NTPClient
 
 
 ## How to Use This Firmware
@@ -83,15 +76,15 @@ You will need to install support for the ESP8266 chip in the Arduino IDE as well
 ![image](./Documentation/Images/XY-Clock-Config.png)
 
 Still in progress but so far, the buttons can be used as such:
-| Button  | Short-press Function | Long-press Function (hold for 3 seconds) |
-| ------- | -------------------- |----------------------------------------- |
-| Up      | Increase Brightness  | - |
-| Down    | Decrease Brightness | - |
-| Set     | Show the Clock's IP Address | Turn on/off the hotspot |
+| Button  | Short-press Function        | Long-press Function (hold for 3 seconds) |
+| ------- | --------------------------- |----------------------------------------- |
+| Up      | Increase Brightness         | Display Date                             |
+| Down    | Decrease Brightness         | Display Alarms                           |
+| Set     | Show the Clock's IP Address | Turn on/off the hotspot                  |
 
 ###  Function Notes
 
-Changing the brightness using the buttons is temporary and will reset whenever the brightness on the web UI is altered or the brightness is changed by the Day Start or Night Start times.
+Changing the brightness using the buttons is temporary and will reset whenever the auto-brightness is changed by the Day Start or Night Start times.  However the auto-brightness can be disabled via the checkbox on the config page.
 
 The hotspot will be created using the device name from the configuration page.  The configuration page can then be accessed through http://192.168.4.1 (which is an ESP device's default).  The hotspot will be automatically turned off after 5 minutes.
 
