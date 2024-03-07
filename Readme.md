@@ -57,7 +57,7 @@ Once the new firmware has been uploaded, disconnect GPIO0 from GND and reset the
 | GPIO14 | Alarm Silence |
 | GPIO16 | SET Button    |
 
-![image](./Documentation/Images/New Connections.png)
+![image](./Documentation/Images/New-Connections.png)
 
 ### SPIFFs
 
