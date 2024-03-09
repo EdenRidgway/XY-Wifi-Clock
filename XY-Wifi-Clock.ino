@@ -48,7 +48,7 @@ Button2 buttonUp, buttonDown, buttonSet, buttonKey;
 
 // external AM/PM LED is soldered between the PIN2 pad and GND
 #define AM_PM_LED_pin   4
-int last_AM_PM_brightness = 0;
+int last_AM_PM_brightness = 0;              // start with AM/PM LED off
 int AM_PM_values[8] =
 {
     0,                                      // LED off
@@ -74,7 +74,7 @@ struct tm currentTimeInfo;
 
 ESP8266WebServer server(80);
 
-bool IsTextOnDisplay = false;
+bool isTextOnDisplay = false;
 
 #define HOTSPOT_CLOSED      0
 #define HOTSPOT_OPEN        1
@@ -575,6 +575,9 @@ void setup()
     configTzTime(posixTimezoneText.c_str(), "pool.ntp.org", "time.nist.gov");
     Serial.print("Waiting for NTP time...");
 
+    // display "ntp" to mean waiting for an NTP time update
+    display.println("ntp");
+
     // wait until time is set from NTP or timeout expires
     //  on power-up, the ESP8285 starts the time at 1 Jan 1970 00:00:00 UTC
     //  so we check to see when the time is past New Year's day of 2000
@@ -582,25 +585,35 @@ void setup()
     String text;
     while ((time(nullptr) < 946706400)  &&  (timeout > 0))  // epoch time for 1 Jan 2000 00:00:00
     {
-        text = "-";
-        text = rightJustifyNumber(text, timeout, " ");
-        text.concat("-");
-        display.println(text);
+        if (timeout <= ((2 * NTP_TIMEOUT) / 3))
+        {
+            text = "-";
+            text = rightJustifyNumber(text, timeout, " ");
+            text.concat("-");
+            display.println(text);
+        }
         Serial.print(timeout);
 
         delay(1000);
 
-        // note this backspace overwrite doesn't work on the Arduino IDE serial monitor, but works fine on Putty
-        if (timeout-- >= 10)
+        if (timeout <= ((2 * NTP_TIMEOUT) / 3))
         {
-            Serial.print("\b\b  \b\b");
+            // note this backspace overwrite doesn't work on the Arduino IDE serial monitor, but works fine on Putty
+            if (timeout >= 10)
+            {
+                Serial.print("\b\b  \b\b");
+            }
+            else
+            {
+                Serial.print("\b \b");
+            }
         }
-        else
-        {
-            Serial.print("\b \b");
-        }
+
+        timeout--;
     }
+    display.println("    ");
     Serial.println();
+    delay(500);
 
     if (timeout <= 0)
     {
@@ -1080,12 +1093,25 @@ void DS1307_WriteTime()
 }
 
 
+// set/reset text on display variable, while keeping AM/PM LED off
+void setTextOnDisplay(bool newState)
+{
+    isTextOnDisplay = newState;
+
+    if (newState)
+    {
+        last_AM_PM_brightness = 0;
+        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
+    }
+}
+
+
 // display scrolling text
 void displayScrollingText(String text)
 {
-    IsTextOnDisplay = true;
+    setTextOnDisplay(true);
 
-    int endPos = 0-text.length()-1;
+    int endPos = 0 - text.length() - 1;
 
     Serial.print("Displaying text ");
     Serial.print(text.length());
@@ -1105,13 +1131,13 @@ void displayScrollingText(String text)
         display.clear();
     }
 
-    IsTextOnDisplay = false;
+    setTextOnDisplay(false);
 }
 
 
 void displayIpAddress()
 {
-    IsTextOnDisplay = true;
+    setTextOnDisplay(true);
 
     display.println("IP");
     delay(1500);
@@ -1124,17 +1150,17 @@ void displayIpAddress()
         delay(1500);
     }
 
-    IsTextOnDisplay = false;
+    setTextOnDisplay(false);
 }
 
 
 void displaySomething(String text)
 {
-    IsTextOnDisplay = true;
+    setTextOnDisplay(true);
 
     display.println(text);
 
-    IsTextOnDisplay = false;
+    setTextOnDisplay(false);
 }
 
 
@@ -1159,6 +1185,8 @@ void displayAlarms()
     uint8_t digit1;
     uint8_t digit2;
     uint8_t digit3;
+
+    setTextOnDisplay(true);
 
     for (auto& alarm : config.alarms)
     {
@@ -1224,12 +1252,14 @@ void displayAlarms()
     {
         displayScrollingText("AL none");
     }
+
+    setTextOnDisplay(false);
 }
 
 
 void displayDate()
 {
-    IsTextOnDisplay = true;
+    setTextOnDisplay(true);
 
     int year  = currentTimeInfo.tm_year + 1900;
     int month = currentTimeInfo.tm_mon  + 1;
@@ -1281,7 +1311,7 @@ void displayDate()
     display.println(year);
     delay(1500);
 
-    IsTextOnDisplay = false;
+    setTextOnDisplay(false);
 }
 
 
@@ -1348,8 +1378,10 @@ void setDisplayBrightness(uint8_t level, bool displayChanges)
 
     if (displayChanges)
     {
+        setTextOnDisplay(true);
         display.println(currentBrightness);
         delay(300);
+        setTextOnDisplay(false);
     }
 }
 
@@ -1521,17 +1553,22 @@ void longClick(Button2& btn)
 void displayTest()
 {
     Serial.println("displayTest");
+
+    setDisplayBrightness(7, false);
+
     for (uint8_t i = 0; i < 3; i++)
     {
         for (uint8_t j = 0; j < 4; j++)
         {
             Disp4Seg.setSegments((j == 0) ? 0x7F : 0xFF, j);
+            analogWrite(AM_PM_LED_pin, AM_PM_values[7]);
         }
         delay(600);
 
         for (uint8_t j = 0; j < 4; j++)
         {
             Disp4Seg.setSegments(0x00, j);
+            analogWrite(AM_PM_LED_pin, AM_PM_values[0]);
         }
         delay(300);
     }
@@ -1541,7 +1578,7 @@ void displayTest()
 void displayTime()
 {
     // only if not currently displaying text
-    if (!IsTextOnDisplay)
+    if (!isTextOnDisplay)
     {
         // the four time digits
         uint8_t digit0;

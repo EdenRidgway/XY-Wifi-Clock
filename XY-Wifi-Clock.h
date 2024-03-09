@@ -37,7 +37,7 @@
 //  the DS1307 time will be used immediately if there is no network connection.  A timeout
 //  could mean that the network connection being used doesn't have internet access, such as at
 //  a hotel that provides wifi but requires a login via browser.
-#define NTP_TIMEOUT                         15
+#define NTP_TIMEOUT                         15                      // should be a minimum of 5 seconds
 
 // Clock time update interval in milliseconds
 //  This is the time between updates of the ESP8285 time from the current
