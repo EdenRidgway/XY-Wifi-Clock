@@ -42,8 +42,8 @@
 // Clock time update interval in milliseconds
 //  This is the time between updates of the ESP8285 time from the current
 //  time source, either NTP or DS1307.  Whenever an NTP update occurs, the
-//  time stored in the DS1307 clock chip is also updated.
-#define TIME_UPDATE_INTERVAL                (2 * 60 * 60 * 1000)    // 2 hours
+//  new time is stored in the DS1307 clock chip.
+#define TIME_UPDATE_INTERVAL                (1 * 60 * 60 * 1000)    // 1 hour
 
 // button long-press time in milliseconds
 #define BUTTON_LONG_PRESS                   (2 * 1000)              // 2 seconds
@@ -52,8 +52,8 @@
 #define HOTSPOT_OPEN_TIME                   (5 * 60 * 1000)         // 5 minutes
 
 // adjust this number to match the external LED brightness with the display
-// the value must be greater than or equal to 7 and less than or equal to 255
-#define AM_PM_BRIGHTNESS_FACTOR             28
+// the value must be greater than or equal to 8 and less than or equal to 255
+#define AM_PM_BRIGHTNESS_FACTOR             32
 
 // maximum alarm buzzer time in milliseconds
 #define MAXIMUM_BUZZER_TIME                 (5 * 60 * 1000)         // 5 minutes

@@ -3,9 +3,7 @@
 // downloaded libraries
 #include <WiFiManager.h>                        // https://github.com/tzapu/WiFiManager             // if using Arduino IDE, click here to search: http://librarymanager#WiFiManager_ESPx_tzapu
 #include <ArduinoJson.h>                        // https://github.com/bblanchon/ArduinoJson         // if using Arduino IDE, click here to search: http://librarymanager#ArduinoJson
-#include <Adafruit_GFX.h>                       // https://github.com/adafruit/Adafruit-GFX-Library // if using Arduino IDE, click here to search: http://librarymanager#Adafruit_GFX_graphics_core_library
 #include <TM1650.h>                             // https://github.com/maxint-rd/TM16xx              // if using Arduino IDE, click here to search: http://librarymanager#TM16xx_LEDs_and_Buttons
-#include <TM16xxMatrixGFX.h>                    // ...
 #include <TM16xxDisplay.h>                      // ...
 #include <Button2.h>                            // https://github.com/LennartHennigs/Button2        // if using Arduino IDE, click here to search: http://librarymanager#Button2
 
@@ -14,6 +12,7 @@
 #include <ArduinoOTA.h>
 
 // local includes
+#include "DS1307.h"
 #include "pitches.h"
 #include "XY-Wifi-Clock.h"
 
@@ -25,14 +24,7 @@ const int SDA_PIN = 13;
 TM1650 Disp4Seg(SDA_PIN, SCL_PIN);
 TM16xxDisplay display(&Disp4Seg, NUM_DIGITS);
 
-#define MATRIX_NUMCOLUMNS 5
-#define MATRIX_NUMROWS 3
-TM16xxMatrixGFX matrix(&Disp4Seg, MATRIX_NUMCOLUMNS, MATRIX_NUMROWS); // TM16xx object, columns, rows#
-
 const int BUZZER_PIN = 5;
-
-// I2C address of DS1307
-const uint8_t DS1307_ADDRESS = (0x68 << 1);
 
 #define buttonUpPin     10
 #define buttonDownPin   9
@@ -40,25 +32,26 @@ const uint8_t DS1307_ADDRESS = (0x68 << 1);
 #define buttonKeyPin    14
 Button2 buttonUp, buttonDown, buttonSet, buttonKey;
 
-// blue LED is just an ON light
+// blue LED ON indicates WiFi is connected
 #define blue_LED_pin    0
 
-// red LED means network is connected, solid ON if with successful NTP, blinking if NTP didn't work
+// red LED is solid ON if NTP was successful, blinking if NTP didn't work
 #define red_LED_pin     2
 
 // external AM/PM LED is soldered between the PIN2 pad and GND
 #define AM_PM_LED_pin   4
 int last_AM_PM_brightness = 0;              // start with AM/PM LED off
-int AM_PM_values[8] =
+int AM_PM_values[9] =
 {
     0,                                      // LED off
-    1 * (AM_PM_BRIGHTNESS_FACTOR / 7),      // brightness 1
-    2 * (AM_PM_BRIGHTNESS_FACTOR / 7),      // brightness 2
-    3 * (AM_PM_BRIGHTNESS_FACTOR / 7),      // brightness 3
-    4 * (AM_PM_BRIGHTNESS_FACTOR / 7),      // brightness 4
-    5 * (AM_PM_BRIGHTNESS_FACTOR / 7),      // brightness 5
-    6 * (AM_PM_BRIGHTNESS_FACTOR / 7),      // brightness 6
-    7 * (AM_PM_BRIGHTNESS_FACTOR / 7)       // brightness 7
+    1 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 1
+    2 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 2
+    3 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 3
+    4 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 4
+    5 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 5
+    6 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 6
+    7 * (AM_PM_BRIGHTNESS_FACTOR / 8),      // brightness 7
+    8 * (AM_PM_BRIGHTNESS_FACTOR / 8)       // brightness 8
 };
 
 bool hasNetworkConnection = false;
@@ -81,6 +74,8 @@ bool isTextOnDisplay = false;
 int hotspotState = HOTSPOT_CLOSED;
 unsigned long hotspotOpenTime = 0;
 
+#define MIN_BRIGHTNESS       1
+#define MAX_BRIGHTNESS       8
 uint8_t currentBrightness  = 0;     // current display brightness
 uint8_t lastAutoBrightness = 0;     // last brightness set by auto day/night settings
 uint8_t manualBrightness   = 4;     // brightness set by pushbutton
@@ -212,8 +207,8 @@ class BrightnessAlarm
 
         void setBrightness(uint8_t value)
         {
-            if (value > 7) value = 7;
-            if (value < 1) value = 1;
+            if (value > MAX_BRIGHTNESS) value = MAX_BRIGHTNESS;
+            if (value < MIN_BRIGHTNESS) value = MIN_BRIGHTNESS;
             alarmBrightness = value;
         }
 
@@ -468,14 +463,10 @@ void setup()
     Serial.println(DEFAULT_APP_NAME);
     Serial.println("Built on " __DATE__ " at " __TIME__);
 
-    // setup rear panel LEDs as outputs
+    // setup rear panel LEDs as outputs and start with LEDs off
     pinMode(blue_LED_pin, OUTPUT);
+    digitalWrite(blue_LED_pin, HIGH);
     pinMode(red_LED_pin, OUTPUT);
-
-    // turn on blue LED
-    digitalWrite(blue_LED_pin, LOW);
-
-    // start with red LED off
     digitalWrite(red_LED_pin, HIGH);
 
     // setup buzzer pin as an output
@@ -527,17 +518,23 @@ void setup()
 
     // try to connect
     Serial.println("Starting Wifi Manager");
+    WiFi.setPhyMode(WIFI_PHY_MODE_11G);         // workaround for bug where clock won't reconnect to an Asus router after DHCP lease expires (ESP core problem?)
     wifiManager.setDebugOutput(true);
     wifiManager.setConnectTimeout(WIFI_CONNECT_TIMEOUT);
-    WiFi.setPhyMode(WIFI_PHY_MODE_11G);         // workaround for bug where clock won't reconnect to an Asus router after DHCP lease expires (ESP core problem?)
+    if (wifiManager.getWiFiIsSaved())
+    {
+        wifiManager.setEnableConfigPortal(false);
+    }
     hasNetworkConnection = wifiManager.autoConnect(DEFAULT_APP_NAME);
     if (hasNetworkConnection)
     {
         Serial.println("Connected to WiFi Network");
+        digitalWrite(blue_LED_pin, LOW);
     }
     else
     {
         Serial.println("Failed to connect to WiFi Network");
+        displayScrollingText("conn FAIL");
     }
 
     // Button2 setup
@@ -553,6 +550,9 @@ void setup()
     buttonKey.begin(buttonKeyPin);
     buttonKey.setClickHandler(click);
     buttonKey.setLongClickHandler(longClick);
+
+    // DS1307 interface setup
+    DS1307_Setup(SCL_PIN, SDA_PIN);
 
     // load settings from SPIFFS
     loadSettings();
@@ -573,31 +573,33 @@ void setup()
 
     // start NTP Time sync service
     configTzTime(posixTimezoneText.c_str(), "pool.ntp.org", "time.nist.gov");
-    Serial.print("Waiting for NTP time...");
 
-    // display "ntp" to mean waiting for an NTP time update
-    display.println("ntp");
-
-    // wait until time is set from NTP or timeout expires
-    //  on power-up, the ESP8285 starts the time at 1 Jan 1970 00:00:00 UTC
-    //  so we check to see when the time is past New Year's day of 2000
-    int timeout = (hasNetworkConnection ? NTP_TIMEOUT : 0);
-    String text;
-    while ((time(nullptr) < 946706400)  &&  (timeout > 0))  // epoch time for 1 Jan 2000 00:00:00
+    // try NTP if there is a network connection
+    int timeout = 0;
+    if (hasNetworkConnection)
     {
-        if (timeout <= ((2 * NTP_TIMEOUT) / 3))
-        {
-            text = "-";
-            text = rightJustifyNumber(text, timeout, " ");
-            text.concat("-");
-            display.println(text);
-        }
-        Serial.print(timeout);
+        // display "ntp" to mean waiting for an NTP time update
+        display.println("ntp");
 
-        delay(1000);
-
-        if (timeout <= ((2 * NTP_TIMEOUT) / 3))
+        // wait until time is set from NTP or timeout expires
+        //  on power-up, the ESP8285 starts the time at 1 Jan 1970 00:00:00 UTC
+        //  so we check to see when the time is past New Year's day of 2000
+        timeout = NTP_TIMEOUT;
+        String text;
+        Serial.print("Waiting for NTP time...");
+        while ((time(nullptr) < 946706400)  &&  (timeout > 0))  // epoch time for 1 Jan 2000 00:00:00
         {
+            if (timeout <= ((2 * NTP_TIMEOUT) / 3))
+            {
+                text = "-";
+                text = rightJustifyNumber(text, timeout, " ");
+                text.concat("-");
+                display.println(text);
+            }
+            Serial.print(timeout);
+
+            delay(1000);
+
             // note this backspace overwrite doesn't work on the Arduino IDE serial monitor, but works fine on Putty
             if (timeout >= 10)
             {
@@ -607,17 +609,21 @@ void setup()
             {
                 Serial.print("\b \b");
             }
-        }
 
-        timeout--;
+            timeout--;
+        }
+        display.println("    ");
+        Serial.println();
+        if (timeout <= 0)
+        {
+            Serial.println("NTP update failed");
+            displayScrollingText("ntp FAIL");
+        }
     }
-    display.println("    ");
-    Serial.println();
-    delay(500);
 
     if (timeout <= 0)
     {
-        Serial.println("NTP update failed, trying to use DS1307 time...");
+        Serial.println("Trying to use DS1307 time...");
         DS1307_ReadTime();
     }
     else
@@ -717,17 +723,17 @@ void loop()
 
         ArduinoOTA.handle();
         yield();
-
-        int red_LED_state = LOW;
-        if ((millis() - last_NTP_Update) > TIME_UPDATE_INTERVAL)
-        {
-            if ((currentSecond & 0x01) != 0)
-            {
-                red_LED_state = HIGH;
-            }
-        }
-        digitalWrite(red_LED_pin, red_LED_state);
     }
+
+    int red_LED_state = LOW;
+    if ((millis() - last_NTP_Update) > TIME_UPDATE_INTERVAL)
+    {
+        if ((currentSecond & 0x01) != 0)
+        {
+            red_LED_state = HIGH;
+        }
+    }
+    digitalWrite(red_LED_pin, red_LED_state);
 
     // sound the buzzer if requested by an alarm
     if (buzzerOn)
@@ -848,251 +854,6 @@ void updateDataFromConfig()
 }
 
 
-void DS1307_BitDelay()
-{
-    // I2C runs at 100 kHz, 5 uSec is half a bit time
-    delayMicroseconds(5);
-}
-
-
-void DS1307_Start()
-{
-    // we assume that the SDA/SCL pins are not in use by the TM1650
-    // since the display update code can't run at the same time as
-    // this clock chip code
-
-    digitalWrite(SCL_PIN, LOW);
-    DS1307_BitDelay();
-    digitalWrite(SDA_PIN, HIGH);
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, HIGH);
-    DS1307_BitDelay();
-    digitalWrite(SDA_PIN, LOW);
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, LOW);
-    DS1307_BitDelay();
-}
-
-
-void DS1307_Stop()
-{
-    digitalWrite(SCL_PIN, LOW);
-    DS1307_BitDelay();
-    digitalWrite(SDA_PIN, LOW);
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, HIGH);
-    DS1307_BitDelay();
-    digitalWrite(SDA_PIN, HIGH);
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, LOW);
-    DS1307_BitDelay();
-    digitalWrite(SDA_PIN, LOW);
-    DS1307_BitDelay();
-}
-
-
-bool DS1307_SendData(byte data)
-{
-    // send 8 bits of data, MSB first
-    for (int i = 0; i < 8; i++)
-    {
-        // write the next bit
-        digitalWrite(SDA_PIN, ((data & 0x80) ? HIGH : LOW));
-        DS1307_BitDelay();
-        data <<= 1;
-
-        // generate a clock
-        digitalWrite(SCL_PIN, HIGH);
-        DS1307_BitDelay();
-        digitalWrite(SCL_PIN, LOW);
-        DS1307_BitDelay();
-    }
-
-    // read the ACK
-    digitalWrite(SDA_PIN, HIGH);
-    pinMode(SDA_PIN, INPUT);
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, HIGH);
-    DS1307_BitDelay();
-    byte ack = digitalRead(SDA_PIN);
-    digitalWrite(SCL_PIN, LOW);
-    DS1307_BitDelay();
-    pinMode(SDA_PIN, OUTPUT);
-    DS1307_BitDelay();
-
-    //  0x00 = ACK, 0x01 = NACK
-    return (ack == 0x00);
-}
-
-
-byte DS1307_ReceiveData(bool lastByte)
-{
-    // initialize the return data
-    byte data = 0x00;
-
-    // set SDA to receive
-    digitalWrite(SDA_PIN, HIGH);
-    pinMode(SDA_PIN, INPUT);
-    DS1307_BitDelay();
-
-    // receive 8 bits of data, MSB first
-    for (int i = 0; i < 8; i++)
-    {
-        data <<= 1;
-
-        digitalWrite(SCL_PIN, HIGH);
-        DS1307_BitDelay();
-
-        if (digitalRead(SDA_PIN))
-        {
-            data |= 0x01;
-        }
-
-        digitalWrite(SCL_PIN, LOW);
-        DS1307_BitDelay();
-    }
-
-    // send the ACK
-    pinMode(SDA_PIN, OUTPUT);
-    DS1307_BitDelay();
-    digitalWrite(SDA_PIN, (lastByte ? HIGH : LOW));
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, HIGH);
-    DS1307_BitDelay();
-    digitalWrite(SCL_PIN, LOW);
-    DS1307_BitDelay();
-
-    return (data);
-}
-
-
-void DS1307_ReadTime()
-{
-    // DS1307 has 7 registers we are interested in
-    byte registers[7];
-
-    // number of bytes actually read with a successful ACK
-    int numBytes = 0;
-
-    // acknowledge from write to slave
-    bool ack;
-
-    // start the read
-    DS1307_Start();
-
-    // write slave address with the direction bit set to write
-    ack = DS1307_SendData(DS1307_ADDRESS | 0x00);
-    if (ack)
-    {
-        // write zero to DS1307 register pointer
-        ack = DS1307_SendData(0x00);
-    }
-    if (ack)
-    {
-        // do a restart
-        DS1307_Start();
-
-        // write slave address with the direction bit set to read
-        if (DS1307_SendData(DS1307_ADDRESS | 0x01))
-        {
-            // read the data
-            bool lastByte;
-            while (numBytes < sizeof(registers))
-            {
-                lastByte = ((numBytes == (sizeof(registers) - 1)) ? true : false);
-                registers[numBytes++] = DS1307_ReceiveData(lastByte);
-            }
-        }
-    }
-
-    // stop the read
-    DS1307_Stop();
-
-    if (numBytes != sizeof(registers))
-    {
-        Serial.print("DS1307 read wrong number of bytes: ");
-        Serial.println(numBytes);
-    }
-    else
-    {
-        // convert from DS1307 format to struct tm format
-        struct tm now;
-        now.tm_sec  = (10 * ((registers[0] & 0x70) >> 4)) + (registers[0] & 0x0F);
-        now.tm_min  = (10 * ((registers[1] & 0x70) >> 4)) + (registers[1] & 0x0F);
-        now.tm_hour = (10 * ((registers[2] & 0x30) >> 4)) + (registers[2] & 0x0F);
-        now.tm_wday = (registers[3] & 0x07) - 1;
-        now.tm_mday = (10 * ((registers[4] & 0x30) >> 4)) + (registers[4] & 0x0F);
-        now.tm_mon  = (10 * ((registers[5] & 0x10) >> 4)) + (registers[5] & 0x0F) - 1;
-        now.tm_year = (10 * ((registers[6] & 0xF0) >> 4)) + (registers[6] & 0x0F) + 100;
-        now.tm_isdst = 0;
-
-        char buffer[80];
-        strftime(buffer, sizeof(buffer), "DS1307 time update to %A, %d %B %Y, %H:%M:%S", &now);
-        Serial.println(buffer);
-
-        // set the time in the ESP8285
-        time_t t = mktime(&now);
-        struct timeval newTime = { .tv_sec = t };
-        settimeofday(&newTime, NULL);
-    }
-}
-
-
-void DS1307_WriteTime()
-{
-    // DS1307 has 8 registers
-    byte registers[8];
-
-    // get snapshot of current time
-    struct tm now = currentTimeInfo;
-
-    // adjust format
-    now.tm_wday += 1;
-    now.tm_mon  += 1;
-    now.tm_year -= 100;   // assume year is 2000 or after
-
-    // setup data in DS1307 registers
-    registers[0] = ((now.tm_sec  / 10) << 4) + (now.tm_sec  % 10);
-    registers[1] = ((now.tm_min  / 10) << 4) + (now.tm_min  % 10);
-    registers[2] = ((now.tm_hour / 10) << 4) + (now.tm_hour % 10);
-    registers[3] = ((now.tm_wday / 10) << 4) + (now.tm_wday % 10);
-    registers[4] = ((now.tm_mday / 10) << 4) + (now.tm_mday % 10);
-    registers[5] = ((now.tm_mon  / 10) << 4) + (now.tm_mon  % 10);
-    registers[6] = ((now.tm_year / 10) << 4) + (now.tm_year % 10);
-    registers[7] = 0x03;
-
-    // number of bytes actually sent with a successful ACK
-    int numBytes = 0;
-
-    // start the write
-    DS1307_Start();
-
-    // write slave address with the direction bit set to write
-    if (DS1307_SendData(DS1307_ADDRESS | 0x00))
-    {
-        // write zero to DS1307 register pointer
-        if (DS1307_SendData(0x00))
-        {
-            // write the data
-            while ((numBytes < sizeof(registers))  &&  DS1307_SendData(registers[numBytes]))
-            {
-                numBytes++;
-            }
-        }
-    }
-
-    // stop the write
-    DS1307_Stop();
-
-    // check result
-    if (numBytes != sizeof(registers))
-    {
-        Serial.print("DS1307 wrote wrong number of bytes: ");
-        Serial.println(numBytes);
-    }
-}
-
-
 // set/reset text on display variable, while keeping AM/PM LED off
 void setTextOnDisplay(bool newState)
 {
@@ -1122,9 +883,6 @@ void displayScrollingText(String text)
 
     for (int cursorPosition = 0; cursorPosition > endPos; cursorPosition--)
     {
-        Serial.print("Cursor Position: ");
-        Serial.println(cursorPosition);
-
         display.setCursor(cursorPosition);
         display.println(text);
         delay(500);
@@ -1372,9 +1130,7 @@ void setDisplayBrightness(uint8_t level, bool displayChanges)
     Serial.print("Setting brightness to ");
     Serial.println(currentBrightness);
 
-    matrix.setIntensity(currentBrightness);
-    matrix.fillScreen(LOW);
-    matrix.write();
+    Disp4Seg.setupDisplay(true, (currentBrightness - 1));
 
     if (displayChanges)
     {
@@ -1388,7 +1144,7 @@ void setDisplayBrightness(uint8_t level, bool displayChanges)
 
 void increaseBrightness()
 {
-    if (manualBrightness < 7)
+    if (manualBrightness < MAX_BRIGHTNESS)
     {
         Serial.println("Manual brightness increase");
         manualBrightness += 1;
@@ -1399,7 +1155,7 @@ void increaseBrightness()
 
 void decreaseBrightness()
 {
-    if (manualBrightness > 1)
+    if (manualBrightness > MIN_BRIGHTNESS)
     {
         Serial.println("Manual brightness decrease");
         manualBrightness -= 1;
@@ -1554,7 +1310,7 @@ void displayTest()
 {
     Serial.println("displayTest");
 
-    setDisplayBrightness(7, false);
+    setDisplayBrightness(MAX_BRIGHTNESS, false);
 
     for (uint8_t i = 0; i < 3; i++)
     {
