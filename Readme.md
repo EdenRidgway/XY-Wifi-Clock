@@ -1,6 +1,7 @@
 # XY-Wifi Clock Replacement Firmware
 
-This is a replacement firmware for the XY-Clock with Wifi (and similar variants) found at https://www.aliexpress.us/item/3256804264884635.html and https://www.aliexpress.us/item/3256805364104474.html that eliminates the need to use the Sinilink app to control it.  It has the following features:
+This is a replacement firmware for the XY-Clock with Wifi (and similar variants) found at https://www.aliexpress.us/item/3256804264884635.html and https://www.aliexpress.us/item/3256805364104474.html. The firmware is a fork of the EdenRidgway XY-Wifi-Clock Project.
+The firmware has the following features:
 * No need to install the Sinilink mobile app. Functionality is controlled from ESP8285 on the clock.
 * Easy setup of connection to Wifi network using temporary access point.
 * Synchronisation with a Network Time Protocol server (NTP) to get the correct time.
@@ -9,6 +10,26 @@ This is a replacement firmware for the XY-Clock with Wifi (and similar variants)
   * Change the device name, timezone and various display options
   * Change brightness based on the time of day
   * Setup up to 7 alarms (to be activated on selected days)
+
+
+###  Changes from Fork of EdenRidgway XY-Wifi-Clock Project
+
+The main change is to enable use of the DS1307 real-time clock chip.  This allows the clock to be used when a wifi connection is unavailable.
+
+Other changes are:
+* Add long-press functionality to the UP and DOWN buttons.  Long-pressing the UP button displays the current date. Long-pressing the DOWN button displays currently enabled alarms.  Alarms that will occur later today or tomorrow blink twice.
+* Use the two LEDs on the top of the clock board.  The blue LED indicates a successful connection to a WiFi network.  The red LED displays NTP connection status.  If a successful NTP time fetch has occurred, the LED will light continuously. If NTP is unavailable or has failed a periodic update, the LED will blink.
+* Add an alarm buzzer.  If selected on the config page, the buzzer will sound at the alarm time.  It will turn off if the web config page is fetched by a browser.  It will also turn off if an external alarm silence switch is installed.  The silence switch is a momentary normally open pushbutton that is connected between the KEY pad on the small 90 degree daughter board and ground.  Finally, the buzzer will turn off after a 5 minute timeout.
+* Add an external AM/PM LED.  The "dots" on the clock display aren't that great for displaying AM/PM, as talked about in the EdenRidgway project discussion. The rightmost dot would be ideal, but it doesn't appear to be connected on the PWB.  An external LED can be added between the PIN2 pad and ground.  The drive for the LED is one of the pulse-width modulated outputs of the ESP8285.  The duty cycle of the pulse is varied when the display brightness changes, so the external LED brightness varies.
+* The number of alarms was changed from 6 to 7 so as to be able to have a unique alarm for each day of the week.
+* The possible brightness levels was changed from 7 to 8.
+* The web config page has more options for clock format, date format, alarm sound, auto-brightness enable and individual alarm enable.
+* A new file, XY-Wifi-Clock.h was added that allows for changing various constants used in the program.  Read the comments to see what can be modified.
+
+Using the DS1307 clock chip changes the way the clock works.  Previously, the clock had to have a wifi connection to work.  Now it doesn't.  The clock always tries to connect to wifi at power-up, but only for 15 seconds.  If wifi can't connect, the clock chip time is used.  The 15 second time can be changed in the XY-Wifi-Clock.h file.  Whenever a successful NTP clock update occures, the clock chip time is reset.  Note that a CR927 battery must be installed for the clock to maintain time without power.
+
+On
+e other change is to easily allow changing the wifi connection.  If you hold the SET button down for 5 seconds during power-up, the currently saved wifi connection is erased and the XY-Clock hotspot is activated.  Accessing the hotspot at 192.168.4.1 allows you to pick a new wifi connection.  The display will show a count-down from 5 to 1, and then will display "conn".
 
 ## Possible Future Changes
 
@@ -97,22 +118,6 @@ The buttons can be used as such:
 | Down    | Decrease Brightness         | Display Alarms                           |
 | Set     | Show the Clock's IP Address | Turn on/off the hotspot                  |
 
-###  Changes from Fork of EdenRidgway XY-Wifi-Clock Project
-
-The main change is to enable use of the DS1307 real-time clock chip.  This allows the clock to be used when a wifi connection is unavailable.
-
-Other changes are:
-* Add long-press functionality to the UP and DOWN buttons.  Long-pressing the UP button displays the current date. Long-pressing the DOWN button displays currently enabled alarms.  Alarms that will occur later today or tomorrow blink twice.
-* Use the two LEDs on the top of the clock board.  The blue LED is simply a power-on indication.  The red LED displays network connection status.  If the clock is connected to wifi and a successful NTP time fetch has occurred, the LED will light continuously. If the clock is connected to wifi but NTP is unavailable or has failed a periodic update, the LED will blink.
-* Add an alarm buzzer.  If selected on the config page, the buzzer will sound at the alarm time.  It will turn off if the web config page is fetched by a browser.  It will also turn off if an external alarm silence switch is installed.  The silence switch is a momentary normally open pushbutton that is connected between the KEY pad on the small 90 degree daughter board and ground.  Finally, the buzzer will turn off after a 5 minute timeout.
-* Add an external AM/PM LED.  The "dots" on the clock display aren't that great for displaying AM/PM, as talked about in the discussion. The rightmost dot would be ideal, but it doesn't appear to be connected on the PWB.  An external LED can be added between the PIN2 pad and ground.  The drive for the LED is one of the pulse-width modulated outputs of the ESP8285.  The duty cycle of the pulse is varied when the display brightness changes, so the external LED brightness varies.
-* The number of alarms was changed from 6 to 7 so as to be able to have a unique alarm for each day of the week.
-* The web config page has more options for clock format, date format, alarm sound, auto-brightness enable and individual alarm enable.
-* A new file, XY-Wifi-Clock.h was added that allows for changing various constants used in the program.  Read the comments to see what can be modified.
-
-Using the DS1307 clock chip changes the way the clock works.  Previously, the clock had to have a wifi connection to work.  Now it doesn't.  The clock always tries to connect to wifi at power-up, but only for 15 seconds.  If wifi can't connect, the clock chip time is used.  The 15 second time can be changed in the XY-Wifi-Clock.h file.  Whenever a successful NTP clock update occures, the clock chip time is reset.  Note that a CR927 battery must be installed for the clock to maintain time without power.
-
-One other change is to easily allow changing the wifi connection.  If you hold the SET button down for 5 seconds during power-up, the currently saved wifi connection is erased and the XY-Clock hotspot is activated.  Accessing the hotspot at 192.168.4.1 allows you to pick a new wifi connection.  The display will show a count-down from 5 to 1, and then will display "conn".
 
 ###  Function Notes
 
@@ -125,5 +130,6 @@ There some quirks and known issues with ESP devices, especially when accessing t
 
 ## Thanks
 This work is built on top investigations and information that others have gathered. In particular I want to thank:
+* Eden Ridgway for the original firmware this fork is based on.
 * Stefan Oskamp (@stefan-oskamp) for working out the GPIO connections on the board
 * @sfromis, @MacSass and others who contributed to the discussion on https://github.com/arendst/Tasmota/discussions/15788
