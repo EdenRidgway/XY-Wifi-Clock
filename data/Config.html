@@ -1,294 +1,489 @@
 <html>
+
 <head>
-    <title>XY-Wifi Clock</title>
-    <style>
-    body { font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }
-    label { width:110px; display: inline-block; }
-	th { font-weight: bold; }
-	td { text-align: center; }
-	button { cursor: pointer; background-color: #e1ecf4; border-radius: 3px; color: #2c5777; border: 1px solid #7aa7c7; box-sizing: border-box; padding: 8px 12px; }
-    </style>
-	<script>
-	function checkBrowserSupported() {
-		"use strict";
 
-		try { eval("var foo = (x)=>x+1"); }
-		catch (e) { return false; }
-		return true;
-	}
+   <title>XY-Wifi Clock</title>
 
-	if (!checkBrowserSupported()) {
-		alert("Your browser is outdated and unfortunately is not supported.");
-	}
-	</script>
+   <style>
+       body { font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }
+       label { width:180px; display: inline-block; }
+       th { font-weight: bold; }
+       td { text-align: center; }
+       button { cursor: pointer; background-color: #e1ecf4; border-radius: 3px; color: #2c5777; border: 1px solid #7aa7c7; box-sizing: border-box; padding: 8px 12px; }
+   </style>
+
+   <script>
+       function checkBrowserSupported()
+       {
+           "use strict";
+
+           try { eval("var foo = (x)=>x+1"); }
+           catch (e) { return false; }
+           return true;
+       }
+
+       if (!checkBrowserSupported())
+       {
+           alert("Your browser is outdated and unfortunately is not supported.");
+       }
+   </script>
+
 </head>
+
 <body>
-    <h1>XY-Wifi Clock</h1>
-    <form>
-        <label>Device Name</label><input type="text" id="deviceName" name="deviceName" maxlength="15"/><br/><br/>
-        <label>Timezone</label>
-		<select id="timezone" name="timezone"></select><br/><br/>
-		<label>12 Hour Mode</label>
-		<input id="twelvehourMode" name="twelvehourMode" type="checkbox"><br/><br/>
-		
-		<h3>Brightness Settings</h3>
-		<div id="day-brightness-section">
-			<label>Day Start</label>
-			<select id="day-start" class="hour"></select>
-			<select class="minute"></select>
-			<span style="padding-left: 5px">Dull <input id="day-start-brightness" class="brightness" type="range" min="1" max="7" value="4"/> Bright</span>
-		</div>
-		
-		<div id="night-brightness-section">
-			<label>Night Start</label>
-			<select id="night-start" class="hour"></select>
-			<select class="minute"></select>
-			<span style="padding-left: 5px">Dull <input id="night-start-brightness" class="brightness" type="range" min="1" max="7" value="4"/> Bright</span>
-		</div>
-		
-		<h3>Alarms</h3>
-		<table id="alarms-table" style="width:360px">
-			<thead>
-				<tr>
-					<th>Hour</th>
-					<th>Min</th>
-					<th>Mon</th>
-					<th>Tue</th>
-					<th>Wed</th>
-					<th>Thu</th>
-					<th>Fri</th>
-					<th>Sat</th>
-					<th>Sun</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><select class="hour"></select></td>
-					<td><select class="minute"></select></td>
-					<td><input  class="mon" type="checkbox"></td>
-					<td><input  class="tue" type="checkbox"></td>
-					<td><input  class="wed" type="checkbox"></td>
-					<td><input  class="thu" type="checkbox"></td>
-					<td><input  class="fri" type="checkbox"></td>
-					<td><input  class="sat" type="checkbox"></td>
-					<td><input  class="sun" type="checkbox"></td>
-				</tr>
-			</tbody>
-		</table>
-		<br/>
-		<div style="width:360px; text-align: center">
-			<button id="save" type="button">Save</button>
-		</div>
-    </form>
-	
+
+<h1>XY-Wifi Clock</h1>
+
+<form>
+   <label>Device Name</label>
+   <input type="text" id="deviceName" name="deviceName" maxlength="15"/><br/><br/>
+
+   <label>Timezone</label>
+   <select id="timezone" name="timezone"></select><br/><br/>
+
+   <label>Display Mode</label>
+   <select id="displayMode" name="displayMode"></select><br/><br/>
+
+   <label>Date Format</label>
+   <select id="dateFormat" name="dateFormat"></select><br/><br/>
+
+   <label>Alarm Sound</label>
+   <select id="alarmSound" name="alarmSound"></select><br/><br/>
+
+   <label>Auto-Brightness Enable</label>
+   <input id="autoBrightness" name="autoBrightness" type="checkbox"><br/><br/>
+
+   <h3>Auto-Brightness Settings</h3>
+   <div id="day-brightness-section">
+      <label>Day Start</label>
+      <select id="day-start" class="hour"></select>
+      <select class="minute"></select>
+      <span style="padding-left: 15px">Dim <input id="day-start-brightness" class="brightness" type="range" min="1" max="8" value="4"/> Bright</span>
+   </div>
+   <div id="night-brightness-section">
+      <label>Night Start</label>
+      <select id="night-start" class="hour"></select>
+      <select class="minute"></select>
+      <span style="padding-left: 15px">Dim <input id="night-start-brightness" class="brightness" type="range" min="1" max="8" value="4"/> Bright</span>
+   </div>
+   <br/>
+
+   <h3>Alarms</h3>
+   <table id="alarms-table" style="width:360px">
+      <thead>
+         <tr>
+            <th>Enable</th>
+            <th>Hour</th>
+            <th>Min</th>
+            <th>Mon</th>
+            <th>Tue</th>
+            <th>Wed</th>
+            <th>Thu</th>
+            <th>Fri</th>
+            <th>Sat</th>
+            <th>Sun</th>
+         </tr>
+      </thead>
+      <tbody>
+         <tr>
+            <td><input  class="enable" type="checkbox"></td>
+            <td><select class="hour"></select></td>
+            <td><select class="minute"></select></td>
+            <td><input  class="mon" type="checkbox"></td>
+            <td><input  class="tue" type="checkbox"></td>
+            <td><input  class="wed" type="checkbox"></td>
+            <td><input  class="thu" type="checkbox"></td>
+            <td><input  class="fri" type="checkbox"></td>
+            <td><input  class="sat" type="checkbox"></td>
+            <td><input  class="sun" type="checkbox"></td>
+         </tr>
+      </tbody>
+   </table>
+   <br/>
+
+   <div style="width:360px; text-align: center">
+      <button id="save" type="button">Save</button>
+   </div>
+
+</form>
+
 <script type="application/javascript">
 
-var alarmRowTemplate = document.querySelector("#alarms-table tbody tr");
+    var alarmRowTemplate = document.querySelector("#alarms-table tbody tr");
 
-var timezones = [];
+    var timezones = [];
 
-function mockConfigFetch() {
-  return Promise.resolve({
-		json: () => Promise.resolve({ 
-			deviceName: "XY-Clock", timezone: "Europe/London", twelvehourMode: false,
-			dayBrightness: { hour: 06, minute: 0, brightness: 3 },
-			nightBrightness: { hour: 20, minute: 0, brightness: 6 },
-			alarms: [
-				{ hour: 7, minute: 40, daysOfWeek: [true, true, true, true, true, false, false] },
-				{ hour: 8, minute: 00, daysOfWeek: [false, false, false, false, false, true, true] }
-			]
-		})
-  })
-}
+    var displayModes = [];
 
-function loadConfig() {
-	fetch("/config")
-	//mockConfigFetch()
-	.then(response => response.json())
-	.then(config => displayConfig(config));
-}
+    var dateFormats = [];
 
-function displayConfig(config) {
-	document.getElementById("deviceName").value = config.deviceName;
-	document.getElementById("timezone").value = config.timezone;
-	document.getElementById("twelvehourMode").checked = config.twelvehourMode;
-	
-	if (config.dayBrightness) {
-		setBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
-	}
-	
-	if (config.nightBrightness) {
-		setBrightness(document.getElementById("night-brightness-section"), config.nightBrightness);
-	}
-	
-	if (config.alarms) {		
-		for (var i=0; i < config.alarms.length; i++) {
-			var alarm = config.alarms[i];
-			
-			var tr = document.querySelectorAll("#alarms-table tbody tr")[i];
-			
-			tr.querySelector(".hour").value = alarm.hour;
-			tr.querySelector(".minute").value = alarm.minute;
-			tr.querySelector(".mon").checked = alarm.daysOfWeek[0];
-			tr.querySelector(".tue").checked = alarm.daysOfWeek[1];
-			tr.querySelector(".wed").checked = alarm.daysOfWeek[2];
-			tr.querySelector(".thu").checked = alarm.daysOfWeek[3];
-			tr.querySelector(".fri").checked = alarm.daysOfWeek[4];
-			tr.querySelector(".sat").checked = alarm.daysOfWeek[5];
-			tr.querySelector(".sun").checked = alarm.daysOfWeek[6];
-		}
-	}
-}
+    var alarmSounds = [];
 
-function setBrightness(brightnessSection, brightnessConfig) {
-	brightnessSection.querySelector(".hour").value = brightnessConfig.hour;
-	brightnessSection.querySelector(".minute").value = brightnessConfig.minute;
-	brightnessSection.querySelector(".brightness").value = brightnessConfig.brightness;	
-}
 
-function getBrightness(brightnessSection, brightnessConfig) {
-	brightnessConfig.hour = Number(brightnessSection.querySelector(".hour").value);
-	brightnessConfig.minute = Number(brightnessSection.querySelector(".minute").value);
-	brightnessConfig.brightness = Number(brightnessSection.querySelector(".brightness").value);	
-}
+    function mockConfigFetch()
+    {
+        return Promise.resolve(
+        {
+            json: () => Promise.resolve(
+            {
+                deviceName: "XY-Clock",
+                timezone: "America/Chicago",
+                displayMode: "12 hour with solid colon (PM LED)",
+                dateFormat: "mm/dd/yyyy",
+                alarmSound: "buzzer",
+                autoBrightness: true,
+                dayBrightness:   { hour: 06, minute: 0, brightness: 1 },
+                nightBrightness: { hour: 20, minute: 0, brightness: 3 },
+                alarms:
+                    [
+                     { enable: true,  hour: 7, minute: 40, daysOfWeek: [true,  true,  true,  true,  true,  false, false] },
+                     { enable: false, hour: 8, minute: 00, daysOfWeek: [false, false, false, false, false, true,  true ] }
+                    ]
+            })
+        })
+    }
 
-function getConfigFromForm() {
-	data = {
-		deviceName: document.getElementById("deviceName").value,
-		timezone: document.getElementById("timezone").value,
-		twelvehourMode: document.getElementById("twelvehourMode").checked,
-		dayBrightness: { hour: 0, minute: 0, brightness: 4 },
-		nightBrightness: { hour: 0, minute: 0, brightness: 4 },
-		alarms: []
-	};
-	
-	getBrightness(document.getElementById("day-brightness-section"), data.dayBrightness);
-	getBrightness(document.getElementById("night-brightness-section"), data.nightBrightness);
-	
-	var trs = document.querySelectorAll("#alarms-table tbody tr");
-	
-	for (var i=0; i < trs.length; i++) {
-		var tr = trs[i];
-		var alarm = {
-			hour: parseInt(tr.querySelector(".hour").value),
-			minute: parseInt(tr.querySelector(".minute").value),
-			daysOfWeek: [false, false, false, false, false, false, false]
-		};
-		
-		alarm.daysOfWeek[0] = tr.querySelector(".mon").checked;
-		alarm.daysOfWeek[1] = tr.querySelector(".tue").checked;
-		alarm.daysOfWeek[2] = tr.querySelector(".wed").checked;
-		alarm.daysOfWeek[3] = tr.querySelector(".thu").checked;
-		alarm.daysOfWeek[4] = tr.querySelector(".fri").checked;
-		alarm.daysOfWeek[5] = tr.querySelector(".sat").checked;
-		alarm.daysOfWeek[6] = tr.querySelector(".sun").checked;
-		
-		data.alarms.push(alarm);
-	}
-	
-	return data;
-}
 
-function saveConfig() {
-	var data = getConfigFromForm();
-	var json = JSON.stringify(data);
-	
-	document.getElementById("save").innerHTML = "Saving...";
-	
-	return fetch("/config", {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: json
-	})
-	.then(() => document.getElementById("save").innerHTML = "Save");
-}
+    function loadConfig()
+    {
+        fetch("/config")
+        //mockConfigFetch()
+        .then(response => response.json())
+        .then(config => displayConfig(config));
+    }
 
-function populateTimezones(select) {
-	for (var i=0; i < timezones.length; i++) {
-		var option = document.createElement("option");
-		option.value = timezones[i];
-		option.text = timezones[i];
-		
-		select.add(option);
-	}
-}
 
-function populateHours(select) {
-	for (var i=0; i < 24; i++) {
-		var option = document.createElement("option");
-		option.value = i;
-		option.text = new String(i);
-		if (option.text.length == 1) option.text = "0" + option.text;
-		
-		select.add(option);
-	}
-}
+    function displayConfig(config)
+    {
+        document.getElementById("deviceName").value       = config.deviceName;
+        document.getElementById("timezone").value         = config.timezone;
+        document.getElementById("displayMode").value      = config.displayMode;
+        document.getElementById("dateFormat").value       = config.dateFormat;
+        document.getElementById("alarmSound").value       = config.alarmSound;
+        document.getElementById("autoBrightness").checked = config.autoBrightness;
 
-function populateMinutes(select) {
-	for (var i=0; i < 60; i+=1) {
-		var option = document.createElement("option");
-		option.value = i;
-		option.text = new String(i);
-		if (option.text.length == 1) option.text = "0" + option.text;
-		
-		select.add(option);
-	}
-}
+        if (config.dayBrightness)
+        {
+            setBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
+        }
 
-function populateAlarmLookups() {
-	populateHours(alarmRowTemplate.querySelector(".hour"));
-	populateMinutes(alarmRowTemplate.querySelector(".minute"));
-}
+        if (config.nightBrightness)
+        {
+            setBrightness(document.getElementById("night-brightness-section"), config.nightBrightness);
+        }
 
-function populateBrightnessLookups() {
-	populateHours(document.querySelector("#day-brightness-section .hour"));
-	populateMinutes(document.querySelector("#day-brightness-section .minute"));
-	
-	populateHours(document.querySelector("#night-brightness-section .hour"));
-	populateMinutes(document.querySelector("#night-brightness-section .minute"));
-}
+        if (config.alarms)
+        {
+            for (var i=0; i < config.alarms.length; i++)
+            {
+                var alarm = config.alarms[i];
 
-function setupAlarms() {
-	populateAlarmLookups();
-	populateBrightnessLookups();
-	
-	var rowsToAdd = 5;
-	var tableBody = document.querySelector("#alarms-table tbody");
-	
-	for (var i=0; i < rowsToAdd; i++) {
-		var alarmRow = alarmRowTemplate.cloneNode(true);
-		
-		tableBody.appendChild(alarmRow)
-	}
-}
+                var tr = document.querySelectorAll("#alarms-table tbody tr")[i];
 
-function setupSave() {
-	var saveButton = document.getElementById("save");
-	saveButton.addEventListener("click", saveConfig);
-}
+                tr.querySelector(".enable").checked = alarm.enable;
+                tr.querySelector(".hour").value     = alarm.hour;
+                tr.querySelector(".minute").value   = alarm.minute;
+                tr.querySelector(".mon").checked    = alarm.daysOfWeek[0];
+                tr.querySelector(".tue").checked    = alarm.daysOfWeek[1];
+                tr.querySelector(".wed").checked    = alarm.daysOfWeek[2];
+                tr.querySelector(".thu").checked    = alarm.daysOfWeek[3];
+                tr.querySelector(".fri").checked    = alarm.daysOfWeek[4];
+                tr.querySelector(".sat").checked    = alarm.daysOfWeek[5];
+                tr.querySelector(".sun").checked    = alarm.daysOfWeek[6];
+            }
+        }
+    }
 
-function loadTimezones() {
-	return fetch("timezones.json", {
-		method: 'GET',
-		headers: { 'Content-Type': 'application/json' }
-	})
-	.then(response => response.json())
-	.then((zones) => {
-		timezones = Object.keys(zones);
-		populateTimezones(document.getElementById("timezone"));
-	});
-}
 
-addEventListener("load", (event) => {
-	loadTimezones()
-	.then(() => {
-		loadConfig();
-	});
-	
-	setupAlarms();
-	setupSave();
-});
+    function setBrightness(brightnessSection, brightnessConfig)
+    {
+        brightnessSection.querySelector(".hour").value = brightnessConfig.hour;
+        brightnessSection.querySelector(".minute").value = brightnessConfig.minute;
+        brightnessSection.querySelector(".brightness").value = brightnessConfig.brightness;
+    }
+
+
+    function getBrightness(brightnessSection, brightnessConfig)
+    {
+        brightnessConfig.hour = Number(brightnessSection.querySelector(".hour").value);
+        brightnessConfig.minute = Number(brightnessSection.querySelector(".minute").value);
+        brightnessConfig.brightness = Number(brightnessSection.querySelector(".brightness").value);
+    }
+
+
+    function getConfigFromForm()
+    {
+        data =
+        {
+            deviceName: document.getElementById("deviceName").value,
+            timezone: document.getElementById("timezone").value,
+            displayMode: document.getElementById("displayMode").value,
+            dateFormat: document.getElementById("dateFormat").value,
+            alarmSound: document.getElementById("alarmSound").value,
+            autoBrightness: document.getElementById("autoBrightness").checked,
+            dayBrightness:   { hour: 0, minute: 0, brightness: 4 },
+            nightBrightness: { hour: 0, minute: 0, brightness: 4 },
+            alarms: []
+        };
+
+        getBrightness(document.getElementById("day-brightness-section"), data.dayBrightness);
+        getBrightness(document.getElementById("night-brightness-section"), data.nightBrightness);
+
+        var trs = document.querySelectorAll("#alarms-table tbody tr");
+
+        for (var i=0; i < trs.length; i++)
+        {
+            var tr = trs[i];
+            var alarm =
+            {
+                enable: tr.querySelector(".enable").checked,
+                hour: parseInt(tr.querySelector(".hour").value),
+                minute: parseInt(tr.querySelector(".minute").value),
+                daysOfWeek: [false, false, false, false, false, false, false]
+            };
+
+            alarm.daysOfWeek[0] = tr.querySelector(".mon").checked;
+            alarm.daysOfWeek[1] = tr.querySelector(".tue").checked;
+            alarm.daysOfWeek[2] = tr.querySelector(".wed").checked;
+            alarm.daysOfWeek[3] = tr.querySelector(".thu").checked;
+            alarm.daysOfWeek[4] = tr.querySelector(".fri").checked;
+            alarm.daysOfWeek[5] = tr.querySelector(".sat").checked;
+            alarm.daysOfWeek[6] = tr.querySelector(".sun").checked;
+
+            data.alarms.push(alarm);
+        }
+
+        return data;
+    }
+
+
+    function saveConfig()
+    {
+        var data = getConfigFromForm();
+        var json = JSON.stringify(data);
+
+        document.getElementById("save").innerHTML = "Saving...";
+
+        return fetch("/config",
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: json
+        })
+        .then(() => document.getElementById("save").innerHTML = "Save");
+    }
+
+
+    function populateTimezones(select)
+    {
+        for (var i=0; i < timezones.length; i++)
+        {
+            var option = document.createElement("option");
+            option.value = timezones[i];
+            option.text = timezones[i];
+
+            select.add(option);
+        }
+    }
+
+
+    function populateDisplayModes(select)
+    {
+        for (var i = 0; i < displayModes.length; i++)
+        {
+            var option   = document.createElement("option");
+            option.value = displayModes[i];
+            option.text  = displayModes[i];
+
+            select.add(option);
+        }
+    }
+
+
+    function populateDateFormats(select)
+    {
+        for (var i = 0; i < dateFormats.length; i++)
+        {
+            var option   = document.createElement("option");
+            option.value = dateFormats[i];
+            option.text  = dateFormats[i];
+
+            select.add(option);
+        }
+    }
+
+    function populateHours(select)
+    {
+        for (var i=0; i < 24; i++)
+        {
+            var option = document.createElement("option");
+            option.value = i;
+            option.text = new String(i);
+            if (option.text.length == 1) option.text = "0" + option.text;
+
+            select.add(option);
+        }
+    }
+
+
+    function populateMinutes(select)
+    {
+        for (var i=0; i < 60; i+=1)
+        {
+            var option = document.createElement("option");
+            option.value = i;
+            option.text = new String(i);
+            if (option.text.length == 1) option.text = "0" + option.text;
+
+            select.add(option);
+        }
+    }
+
+
+    function populateAlarmSounds(select)
+    {
+        for (var i = 0; i < alarmSounds.length; i++)
+        {
+            var option = document.createElement("option");
+            option.value = alarmSounds[i];
+            option.text  = alarmSounds[i];
+
+            select.add(option);
+        }
+    }
+
+
+    function populateAlarmLookups()
+    {
+        populateHours(alarmRowTemplate.querySelector(".hour"));
+        populateMinutes(alarmRowTemplate.querySelector(".minute"));
+    }
+
+
+    function populateBrightnessLookups()
+    {
+        populateHours(document.querySelector("#day-brightness-section .hour"));
+        populateMinutes(document.querySelector("#day-brightness-section .minute"));
+
+        populateHours(document.querySelector("#night-brightness-section .hour"));
+        populateMinutes(document.querySelector("#night-brightness-section .minute"));
+    }
+
+
+    function setupAlarms()
+    {
+        populateAlarmLookups();
+        populateBrightnessLookups();
+
+        var rowsToAdd = 6;
+        var tableBody = document.querySelector("#alarms-table tbody");
+
+        for (var i=0; i < rowsToAdd; i++)
+        {
+            var alarmRow = alarmRowTemplate.cloneNode(true);
+
+            tableBody.appendChild(alarmRow)
+        }
+    }
+
+
+    function setupSave()
+    {
+        var saveButton = document.getElementById("save");
+        saveButton.addEventListener("click", saveConfig);
+    }
+
+    function loadTimezones()
+    {
+        return fetch("timezones.json",
+        {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((zones) =>
+        {
+            timezones = Object.keys(zones);
+            populateTimezones(document.getElementById("timezone"));
+        });
+    }
+
+
+    function loadDisplayModes()
+    {
+        return fetch("displayModes.json",
+        {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((modes) =>
+        {
+            displayModes = Object.keys(modes);
+            populateDisplayModes(document.getElementById("displayMode"));
+        });
+    }
+
+
+    function loadDateFormats()
+    {
+        return fetch("dateFormats.json",
+        {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((modes) =>
+        {
+            dateFormats = Object.keys(modes);
+            populateDateFormats(document.getElementById("dateFormat"));
+        });
+    }
+
+
+    function loadAlarmSounds()
+    {
+        return fetch("alarmSounds.json",
+        {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then((modes) =>
+        {
+            alarmSounds = Object.keys(modes);
+            populateAlarmSounds(document.getElementById("alarmSound"));
+        });
+    }
+
+
+    addEventListener("load", (event) =>
+    {
+        loadTimezones()
+        .then(() =>
+        {
+            loadDisplayModes()
+            .then (() =>
+            {
+                loadDateFormats()
+                .then (() =>
+                {
+                    loadAlarmSounds()
+                    .then (() =>
+                    {
+                        loadConfig();
+                    });
+                });
+            });
+        });
+
+        setupAlarms();
+
+        setupSave();
+    });
 
 </script>
+
 </body>
+
 </html>

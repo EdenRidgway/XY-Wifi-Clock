@@ -1,0 +1,10 @@
+{
+"24 hour with solid colon" : 0,
+"24 hour with blinking colon" : 1,
+"12 hour with solid colon" : 2,
+"12 hour with solid colon (AM LED)" : 3,
+"12 hour with solid colon (PM LED)" : 4,
+"12 hour with blinking colon" : 5,
+"12 hour with blinking colon (AM only)" : 6,
+"12 hour with blinking colon (PM only)" : 7
+}

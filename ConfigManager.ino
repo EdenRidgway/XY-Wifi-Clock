@@ -1,20 +1,26 @@
 #include <ArduinoJson.h>  // https://github.com/bblanchon/ArduinoJson
 #include <FS.h>
+#include "XY-WiFi-Clock.h"
 
-bool isConfigLoaded = false;
 
-void loadSettings() {
-    Serial.println("loadSettings");
+void loadSettings()
+{
+    Serial.println("loadSettings started");
 
     ensureSpiffsStarted();
 
     File configFile = SPIFFS.open("/config.json", "r");
 
-    if (!configFile) {
-        config.setDeviceName("XY-Clock");
-        config.setTimezone("UTC");
+    if (!configFile)
+    {
+        config.setDeviceName(DEFAULT_APP_NAME);
+        config.setTimezone("America/Chicago");
+        config.setDisplayMode("12 hour with solid colon (PM LED)");
+        config.setDateFormat("mm/dd/yyyy");
+        config.setAlarmSound("buzzer");
+        config.setAutoBrightnessEnable(true);
 
-        Serial.println("Failed to open config file for reading");
+        Serial.println("Failed to open config file for reading, using defaults");
         saveSettings();
         return;
     }
@@ -33,33 +39,57 @@ void loadSettings() {
     Serial.println(config.getDeviceName());
     Serial.print("Timezone: ");
     Serial.println(config.getTimezone());
+    Serial.print("Display Mode: ");
+    Serial.println(config.getDisplayMode());
+    Serial.print("Date Format: ");
+    Serial.println(config.getDateFormat());
+    Serial.print("Alarm Sound: ");
+    Serial.println(config.getAlarmSound());
+    Serial.print("Auto brightness: ");
+    Serial.println(config.getAutoBrightnessEnable() ? "enabled" : "disabled");
 
-    isConfigLoaded = true;
     Serial.println("loadSettings complete");
 }
 
+
 // Loads the settings from a JSON document
-void loadSettingsFromJson(DynamicJsonDocument json) {
+void loadSettingsFromJson(DynamicJsonDocument json)
+{
     Serial.println("loadSettingsFromJson");
-    serializeJson(json, Serial);
 
     config.setDeviceName(json["deviceName"]);
     config.setTimezone(json["timezone"]);
-    config.settwelvehourMode(json["twelvehourMode"].as<bool>());
+    config.setDisplayMode(json["displayMode"]);
+    config.setDateFormat(json["dateFormat"]);
+    config.setAlarmSound(json["alarmSound"]);
+    config.setAutoBrightnessEnable(json["autoBrightness"].as<bool>());
 
     // Set defaults
-    if (!config.getDeviceName()) {
-        config.setDeviceName("XY-Clock");
+    if (!config.getDeviceName())
+    {
+        config.setDeviceName(DEFAULT_APP_NAME);
     }
 
-    if (!config.getTimezone()) {
-        config.setTimezone("Europe/London");
+    if (!config.getTimezone())
+    {
+        config.setTimezone("America/Chicago");
     }
 
-    if (!config.gettwelvehourMode()) {
-        config.settwelvehourMode(false);
+    if (!config.getDisplayMode())
+    {
+        config.setDisplayMode("12 hour with solid colon (PM LED)");
     }
-    
+
+    if (!config.getDateFormat())
+    {
+        config.setDateFormat("mm/dd/yyyy");
+    }
+
+    if (!config.getAlarmSound())
+    {
+        config.setAlarmSound("buzzer");
+    }
+
     if (json["dayBrightness"])
     {
         parseBrightnessAlarmConfig(json["dayBrightness"], config.dayBrightnessAlarm);
@@ -75,6 +105,7 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
         auto jsonAlarms = json["alarms"].as<JsonArray>();
         int index = 0;
         for (JsonVariant jsonAlarm : jsonAlarms) {
+            config.alarms[index].setEnable(jsonAlarm["enable"].as<bool>());
             config.alarms[index].setHour(jsonAlarm["hour"].as<byte>());
             config.alarms[index].setMinute(jsonAlarm["minute"].as<byte>());
             config.alarms[index].clearDaysOfWeek();
@@ -86,7 +117,7 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
 
             for (JsonVariant jsonDay : jsonDaysOfWeek) {
                 bool isDayOfWeek = jsonDay.as<bool>();
-                
+
                 // Serial.print("Day of week ");
                 // Serial.print(dayIndex);
                 // Serial.print(" is ");
@@ -104,23 +135,30 @@ void loadSettingsFromJson(DynamicJsonDocument json) {
     }
 }
 
+
 // Set the brightness alarm config
-void parseBrightnessAlarmConfig(JsonObject json, BrightnessAlarm* brightnessAlarm) {
+void parseBrightnessAlarmConfig(JsonObject json, BrightnessAlarm* brightnessAlarm)
+{
     brightnessAlarm->setBrightness(json["brightness"].as<byte>());
     brightnessAlarm->setHour(json["hour"].as<byte>());
     brightnessAlarm->setMinute(json["minute"].as<byte>());
 }
 
+
 // Converts a config to JSON
-DynamicJsonDocument convertConfigToJson() {
+DynamicJsonDocument convertConfigToJson()
+{
     Serial.println("convertConfigToJson");
 
     DynamicJsonDocument doc(2048);
 
     doc["deviceName"] = config.getDeviceName();
     doc["timezone"] = config.getTimezone();
-    doc["twelvehourMode"] = config.gettwelvehourMode();
-    
+    doc["displayMode"] = config.getDisplayMode();
+    doc["dateFormat"] = config.getDateFormat();
+    doc["alarmSound"] = config.getAlarmSound();
+    doc["autoBrightness"]= config.getAutoBrightnessEnable();
+
     doc["dayBrightness"] = doc.createNestedObject();
     doc["dayBrightness"]["hour"] = config.dayBrightnessAlarm->getHour();
     doc["dayBrightness"]["minute"] = config.dayBrightnessAlarm->getMinute();
@@ -133,15 +171,18 @@ DynamicJsonDocument convertConfigToJson() {
 
     JsonArray alarmsJson = doc.createNestedArray("alarms");
 
-    for (Alarm& alarm : config.alarms) {
+    for (Alarm& alarm : config.alarms)
+    {
         JsonObject alarmJson = alarmsJson.createNestedObject();
 
-        alarmJson["hour"] = alarm.getHour();
+        alarmJson["enable"] = alarm.getEnable();
+        alarmJson["hour"]   = alarm.getHour();
         alarmJson["minute"] = alarm.getMinute();
-        
+
         JsonArray daysOfWeek = alarmJson.createNestedArray("daysOfWeek");
 
-        for (byte day = 1; day <= 7; day++) {
+        for (byte day = 1; day <= 7; day++)
+        {
             bool isDayOfWeekEnabled = alarm.isForDayOfWeek(day);
             daysOfWeek.add(isDayOfWeekEnabled);
         }
@@ -150,15 +191,16 @@ DynamicJsonDocument convertConfigToJson() {
     return doc;
 }
 
-void saveSettings() {
-    Serial.println("");
+void saveSettings()
+{
     Serial.println("saveSettings");
 
     ensureSpiffsStarted();
-    
+
     File configFile = SPIFFS.open("/config.json", "w");
 
-    if (!configFile) {
+    if (!configFile)
+    {
         Serial.println("Failed to open config file for writing");
         return;
     }
@@ -169,8 +211,10 @@ void saveSettings() {
     // Debug output
     serializeJson(doc, Serial);
     Serial.println();
-    
+
     configFile.close();
-    
+
+    updateDataFromConfig();
+
     Serial.println("Settings saved");
 }
