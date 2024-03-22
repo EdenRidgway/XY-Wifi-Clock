@@ -53,7 +53,7 @@
 
 // adjust this number to match the external LED brightness with the display
 // the value must be greater than or equal to 8 and less than or equal to 255
-#define AM_PM_BRIGHTNESS_FACTOR             32
+#define AM_PM_BRIGHTNESS_FACTOR             8
 
 // maximum alarm buzzer time in milliseconds
 #define MAXIMUM_BUZZER_TIME                 (5 * 60 * 1000)         // 5 minutes

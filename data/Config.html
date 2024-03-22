@@ -41,7 +41,7 @@
    <label>Timezone</label>
    <select id="timezone" name="timezone"></select><br/><br/>
 
-   <label>Display Mode</label>
+   <label>Time Format</label>
    <select id="displayMode" name="displayMode"></select><br/><br/>
 
    <label>Date Format</label>
@@ -53,55 +53,61 @@
    <label>Auto-Brightness Enable</label>
    <input id="autoBrightness" name="autoBrightness" type="checkbox"><br/><br/>
 
+   <br/>
    <h3>Auto-Brightness Settings</h3>
    <div id="day-brightness-section">
-      <label>Day Start</label>
+      <label style="width: 95px">Day Start</label>
       <select id="day-start" class="hour"></select>
-      <select class="minute"></select>
-      <span style="padding-left: 15px">Dim <input id="day-start-brightness" class="brightness" type="range" min="1" max="8" value="4"/> Bright</span>
+      &emsp;<select class="minute"></select>
+      &emsp;<select class="AmPm"></select>
+      <span style="padding-left: 40px">Dim <input id="day-start-brightness" class="brightness" type="range" min="1" max="8" value="4"/> Bright</span>
    </div>
    <div id="night-brightness-section">
-      <label>Night Start</label>
+      <label style="width: 95px">Night Start</label>
       <select id="night-start" class="hour"></select>
-      <select class="minute"></select>
-      <span style="padding-left: 15px">Dim <input id="night-start-brightness" class="brightness" type="range" min="1" max="8" value="4"/> Bright</span>
+      &emsp;<select class="minute"></select>
+      &emsp;<select class="AmPm"></select>
+      <span style="padding-left: 40px">Dim <input id="night-start-brightness" class="brightness" type="range" min="1" max="8" value="4"/> Bright</span>
    </div>
-   <br/>
+   <br/><br/>
 
    <h3>Alarms</h3>
-   <table id="alarms-table" style="width:360px">
+   <table id="alarms-table">
       <thead>
          <tr>
             <th>Enable</th>
-            <th>Hour</th>
-            <th>Min</th>
-            <th>Mon</th>
-            <th>Tue</th>
-            <th>Wed</th>
-            <th>Thu</th>
-            <th>Fri</th>
-            <th>Sat</th>
-            <th>Sun</th>
+            <th style="padding-left: 40px">Hour</th>
+            <th style="padding-left: 15px">Min</th>
+            <th style="padding-left: 15px">AM/PM</th>
+            <th style="padding-left: 20px">Mon</th>
+            <th style="padding-left: 5px">Tue</th>
+            <th style="padding-left: 5px">Wed</th>
+            <th style="padding-left: 5px">Thu</th>
+            <th style="padding-left: 5px">Fri</th>
+            <th style="padding-left: 5px">Sat</th>
+            <th style="padding-left: 5px">Sun</th>
          </tr>
       </thead>
       <tbody>
          <tr>
             <td><input  class="enable" type="checkbox"></td>
-            <td><select class="hour"></select></td>
-            <td><select class="minute"></select></td>
-            <td><input  class="mon" type="checkbox"></td>
-            <td><input  class="tue" type="checkbox"></td>
-            <td><input  class="wed" type="checkbox"></td>
-            <td><input  class="thu" type="checkbox"></td>
-            <td><input  class="fri" type="checkbox"></td>
-            <td><input  class="sat" type="checkbox"></td>
-            <td><input  class="sun" type="checkbox"></td>
+            <td style="padding-left: 40px"><select class="hour"></select></td>
+            <td style="padding-left: 15px"><select class="minute"></select></td>
+            <td style="padding-left: 15px"><select class="AmPm"></select></td>
+            <td style="padding-left: 20px"><input  class="mon" type="checkbox"></td>
+            <td style="padding-left: 5px"><input  class="tue" type="checkbox"></td>
+            <td style="padding-left: 5px"><input  class="wed" type="checkbox"></td>
+            <td style="padding-left: 5px"><input  class="thu" type="checkbox"></td>
+            <td style="padding-left: 5px"><input  class="fri" type="checkbox"></td>
+            <td style="padding-left: 5px"><input  class="sat" type="checkbox"></td>
+            <td style="padding-left: 5px"><input  class="sun" type="checkbox"></td>
          </tr>
       </tbody>
    </table>
-   <br/>
+   <br/><br/>
 
-   <div style="width:360px; text-align: center">
+   <br/>
+   <div style="width:540px; text-align: center">
       <button id="save" type="button">Save</button>
    </div>
 
@@ -120,34 +126,9 @@
     var alarmSounds = [];
 
 
-    function mockConfigFetch()
-    {
-        return Promise.resolve(
-        {
-            json: () => Promise.resolve(
-            {
-                deviceName: "XY-Clock",
-                timezone: "America/Chicago",
-                displayMode: "12 hour with solid colon (PM LED)",
-                dateFormat: "mm/dd/yyyy",
-                alarmSound: "buzzer",
-                autoBrightness: true,
-                dayBrightness:   { hour: 06, minute: 0, brightness: 1 },
-                nightBrightness: { hour: 20, minute: 0, brightness: 3 },
-                alarms:
-                    [
-                     { enable: true,  hour: 7, minute: 40, daysOfWeek: [true,  true,  true,  true,  true,  false, false] },
-                     { enable: false, hour: 8, minute: 00, daysOfWeek: [false, false, false, false, false, true,  true ] }
-                    ]
-            })
-        })
-    }
-
-
     function loadConfig()
     {
         fetch("/config")
-        //mockConfigFetch()
         .then(response => response.json())
         .then(config => displayConfig(config));
     }
@@ -162,6 +143,8 @@
         document.getElementById("alarmSound").value       = config.alarmSound;
         document.getElementById("autoBrightness").checked = config.autoBrightness;
 
+        setupAlarms();
+
         if (config.dayBrightness)
         {
             setBrightness(document.getElementById("day-brightness-section"), config.dayBrightness);
@@ -174,15 +157,16 @@
 
         if (config.alarms)
         {
-            for (var i=0; i < config.alarms.length; i++)
+            for (var i = 0; i < config.alarms.length; i++)
             {
                 var alarm = config.alarms[i];
 
                 var tr = document.querySelectorAll("#alarms-table tbody tr")[i];
 
                 tr.querySelector(".enable").checked = alarm.enable;
-                tr.querySelector(".hour").value     = alarm.hour;
+                tr.querySelector(".hour").value     = convertHour24to12(parseInt(alarm.hour));
                 tr.querySelector(".minute").value   = alarm.minute;
+                tr.querySelector(".AmPm").value     = convertAmPm24to12(parseInt(alarm.hour));
                 tr.querySelector(".mon").checked    = alarm.daysOfWeek[0];
                 tr.querySelector(".tue").checked    = alarm.daysOfWeek[1];
                 tr.querySelector(".wed").checked    = alarm.daysOfWeek[2];
@@ -197,17 +181,19 @@
 
     function setBrightness(brightnessSection, brightnessConfig)
     {
-        brightnessSection.querySelector(".hour").value = brightnessConfig.hour;
-        brightnessSection.querySelector(".minute").value = brightnessConfig.minute;
+        brightnessSection.querySelector(".hour").value       = convertHour24to12(parseInt(brightnessConfig.hour));
+        brightnessSection.querySelector(".minute").value     = brightnessConfig.minute;
+        brightnessSection.querySelector(".AmPm").value       = convertAmPm24to12(parseInt(brightnessConfig.hour));
         brightnessSection.querySelector(".brightness").value = brightnessConfig.brightness;
     }
 
 
     function getBrightness(brightnessSection, brightnessConfig)
     {
-        brightnessConfig.hour = Number(brightnessSection.querySelector(".hour").value);
-        brightnessConfig.minute = Number(brightnessSection.querySelector(".minute").value);
-        brightnessConfig.brightness = Number(brightnessSection.querySelector(".brightness").value);
+        brightnessConfig.hour       = convertHour12to24(parseInt(brightnessSection.querySelector(".hour").value),
+                                                        brightnessSection.querySelector(".AmPm").value);
+        brightnessConfig.minute     = parseInt(brightnessSection.querySelector(".minute").value);
+        brightnessConfig.brightness = parseInt(brightnessSection.querySelector(".brightness").value);
     }
 
 
@@ -231,13 +217,13 @@
 
         var trs = document.querySelectorAll("#alarms-table tbody tr");
 
-        for (var i=0; i < trs.length; i++)
+        for (var i = 0; i < trs.length; i++)
         {
             var tr = trs[i];
             var alarm =
             {
                 enable: tr.querySelector(".enable").checked,
-                hour: parseInt(tr.querySelector(".hour").value),
+                hour: convertHour12to24(parseInt(tr.querySelector(".hour").value), tr.querySelector(".AmPm").value),
                 minute: parseInt(tr.querySelector(".minute").value),
                 daysOfWeek: [false, false, false, false, false, false, false]
             };
@@ -274,51 +260,241 @@
     }
 
 
-    function populateTimezones(select)
+    function isTimeFormat24(format)
     {
-        for (var i=0; i < timezones.length; i++)
-        {
-            var option = document.createElement("option");
-            option.value = timezones[i];
-            option.text = timezones[i];
-
-            select.add(option);
-        }
+        return (format.startsWith("24"));
     }
 
 
-    function populateDisplayModes(select)
+    function isTimeFormat12(format)
     {
-        for (var i = 0; i < displayModes.length; i++)
-        {
-            var option   = document.createElement("option");
-            option.value = displayModes[i];
-            option.text  = displayModes[i];
-
-            select.add(option);
-        }
+        return (format.startsWith("12"));
     }
 
 
-    function populateDateFormats(select)
+    function isTimeSetting24(setting)
     {
-        for (var i = 0; i < dateFormats.length; i++)
-        {
-            var option   = document.createElement("option");
-            option.value = dateFormats[i];
-            option.text  = dateFormats[i];
+        return (setting === "--");
+    }
 
-            select.add(option);
+
+    function isTimeSettingAM(setting)
+    {
+        return (setting === "AM");
+    }
+
+
+    function isTimeSettingPM(setting)
+    {
+        return (setting === "PM");
+    }
+
+
+    function convertHour24to12(hour)
+    {
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        if (isTimeFormat12(currentTimeFormat))
+        {
+            if (hour == 0)
+            {
+                hour  = 12;
+            }
+            else if (hour > 12)
+            {
+                hour -= 12;
+            }
+        }
+
+        return (hour);
+    }
+
+
+    function convertAmPm24to12(hour)
+    {
+        var AmPm;
+
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        if (isTimeFormat24(currentTimeFormat))
+        {
+            AmPm = "--";
+        }
+        else
+        {
+            if (hour < 12)
+            {
+                AmPm = "AM";
+            }
+            else
+            {
+                AmPm = "PM";
+            }
+        }
+
+        return (AmPm);
+    }
+
+
+    function convertHour12to24(hour, AmPm)
+    {
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        if (isTimeFormat12(currentTimeFormat))
+        {
+            if (isTimeSettingAM(AmPm))
+            {
+                if (hour == 12)
+                {
+                    hour  = 0;
+                }
+            }
+            else
+            {
+                hour += 12;
+            }
+        }
+
+        return (hour);
+    }
+
+
+    function adjustHour(hour, AmPm)
+    {
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        if (isTimeFormat24(currentTimeFormat))
+        {
+            if (isTimeSettingAM(AmPm))
+            {
+                if (hour == 12)
+                {
+                    hour = 0;
+                }
+            }
+            else if (isTimeSettingPM(AmPm))
+            {
+                if (hour < 12)
+                {
+                    hour += 12;
+                }
+            }
+        }
+        else
+        {
+            if (isTimeSetting24(AmPm))
+            {
+                if (hour == 0)
+                {
+                    hour  = 12;
+                }
+                else if (hour > 12)
+                {
+                    hour -= 12;
+                }
+            }
+        }
+
+        return (hour);
+    }
+
+
+    function adjustAmPm(hour, AmPm)
+    {
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        if (isTimeFormat24(currentTimeFormat))
+        {
+            AmPm = "--";
+        }
+        else
+        {
+            if (isTimeSetting24(AmPm))
+            {
+                if (hour == 0)
+                {
+                    AmPm  = "AM";
+                }
+                else if (hour < 12)
+                {
+                    AmPm  = "AM";
+                }
+                else
+                {
+                    AmPm  = "PM";
+                }
+            }
+        }
+
+        return (AmPm);
+    }
+
+
+    function checkAmPm()
+    {
+        var alarm;
+
+        alarm =
+        {
+            hour: parseInt(document.querySelector("#day-brightness-section .hour").value),
+            AmPm: document.querySelector("#day-brightness-section .AmPm").value
+        };
+        populateHours(document.querySelector("#day-brightness-section .hour"));
+        populateAmPm(document.querySelector("#day-brightness-section .AmPm"));
+        document.querySelector("#day-brightness-section .hour").value = adjustHour(alarm.hour, alarm.AmPm);
+        document.querySelector("#day-brightness-section .AmPm").value = adjustAmPm(alarm.hour, alarm.AmPm);
+
+        alarm =
+        {
+            hour: parseInt(document.querySelector("#night-brightness-section .hour").value),
+            AmPm: document.querySelector("#night-brightness-section .AmPm").value
+        };
+        populateHours(document.querySelector("#night-brightness-section .hour"));
+        populateAmPm(document.querySelector("#night-brightness-section .AmPm"));
+        document.querySelector("#night-brightness-section .hour").value = adjustHour(alarm.hour, alarm.AmPm);
+        document.querySelector("#night-brightness-section .AmPm").value = adjustAmPm(alarm.hour, alarm.AmPm);
+
+        var trs = document.querySelectorAll("#alarms-table tbody tr");
+        for (var i = 0; i < trs.length; i++)
+        {
+            var tr = trs[i];
+
+            alarm =
+            {
+                hour: parseInt(tr.querySelector(".hour").value),
+                AmPm: tr.querySelector(".AmPm").value
+            };
+
+            populateHours(tr.querySelector(".hour"));
+            populateAmPm(tr.querySelector(".AmPm"));
+
+            tr.querySelector(".hour").value = adjustHour(alarm.hour, alarm.AmPm);
+            tr.querySelector(".AmPm").value = adjustAmPm(alarm.hour, alarm.AmPm);
         }
     }
+
 
     function populateHours(select)
     {
-        for (var i=0; i < 24; i++)
+        for (var i = 23; i >= 0; i--)
         {
-            var option = document.createElement("option");
+            select.remove(i);
+        }
+
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        var start;
+        var end;
+        if (isTimeFormat24(currentTimeFormat))
+        {
+            start = 0;
+            end   = 23;
+        }
+        else
+        {
+            start = 1;
+            end   = 12;
+        }
+
+        for (var i = start; i <= end; i++)
+        {
+            var option   = document.createElement("option");
             option.value = i;
-            option.text = new String(i);
+            option.text  = new String(i);
             if (option.text.length == 1) option.text = "0" + option.text;
 
             select.add(option);
@@ -328,11 +504,11 @@
 
     function populateMinutes(select)
     {
-        for (var i=0; i < 60; i+=1)
+        for (var i = 0; i < 60; i++)
         {
-            var option = document.createElement("option");
+            var option   = document.createElement("option");
             option.value = i;
-            option.text = new String(i);
+            option.text  = new String(i);
             if (option.text.length == 1) option.text = "0" + option.text;
 
             select.add(option);
@@ -340,15 +516,32 @@
     }
 
 
-    function populateAlarmSounds(select)
+    function populateAmPm(select)
     {
-        for (var i = 0; i < alarmSounds.length; i++)
+        for (var i = 1; i >= 0; i--)
         {
-            var option = document.createElement("option");
-            option.value = alarmSounds[i];
-            option.text  = alarmSounds[i];
+            select.remove(i);
+        }
 
-            select.add(option);
+        var currentTimeFormat = document.getElementById("displayMode").value;
+        if (isTimeFormat24(currentTimeFormat))
+        {
+            var option24   = document.createElement("option");
+            option24.value = new String("--");
+            option24.text  = option24.value;
+            select.add(option24);
+        }
+        else
+        {
+            var optionAM   = document.createElement("option");
+            optionAM.value = new String("AM");
+            optionAM.text  = optionAM.value;
+            select.add(optionAM);
+
+            var optionPM   = document.createElement("option");
+            optionPM.value = new String("PM");
+            optionPM.text  = optionPM.value;
+            select.add(optionPM);
         }
     }
 
@@ -357,6 +550,7 @@
     {
         populateHours(alarmRowTemplate.querySelector(".hour"));
         populateMinutes(alarmRowTemplate.querySelector(".minute"));
+        populateAmPm(alarmRowTemplate.querySelector(".AmPm"));
     }
 
 
@@ -364,21 +558,23 @@
     {
         populateHours(document.querySelector("#day-brightness-section .hour"));
         populateMinutes(document.querySelector("#day-brightness-section .minute"));
+        populateAmPm(document.querySelector("#day-brightness-section .AmPm"));
 
         populateHours(document.querySelector("#night-brightness-section .hour"));
         populateMinutes(document.querySelector("#night-brightness-section .minute"));
+        populateAmPm(document.querySelector("#night-brightness-section .AmPm"));
     }
 
 
     function setupAlarms()
     {
-        populateAlarmLookups();
         populateBrightnessLookups();
+        populateAlarmLookups();
 
         var rowsToAdd = 6;
         var tableBody = document.querySelector("#alarms-table tbody");
 
-        for (var i=0; i < rowsToAdd; i++)
+        for (var i = 0; i < rowsToAdd; i++)
         {
             var alarmRow = alarmRowTemplate.cloneNode(true);
 
@@ -387,11 +583,28 @@
     }
 
 
-    function setupSave()
+    function setupControlEvents()
     {
         var saveButton = document.getElementById("save");
         saveButton.addEventListener("click", saveConfig);
+
+        var timeFormat = document.getElementById("displayMode");
+        timeFormat.addEventListener("change", checkAmPm);
     }
+
+
+    function populateTimezones(select)
+    {
+        for (var i = 0; i < timezones.length; i++)
+        {
+            var option   = document.createElement("option");
+            option.value = timezones[i];
+            option.text  = timezones[i];
+
+            select.add(option);
+        }
+    }
+
 
     function loadTimezones()
     {
@@ -406,6 +619,19 @@
             timezones = Object.keys(zones);
             populateTimezones(document.getElementById("timezone"));
         });
+    }
+
+
+    function populateDisplayModes(select)
+    {
+        for (var i = 0; i < displayModes.length; i++)
+        {
+            var option   = document.createElement("option");
+            option.value = displayModes[i];
+            option.text  = displayModes[i];
+
+            select.add(option);
+        }
     }
 
 
@@ -425,6 +651,19 @@
     }
 
 
+    function populateDateFormats(select)
+    {
+        for (var i = 0; i < dateFormats.length; i++)
+        {
+            var option   = document.createElement("option");
+            option.value = dateFormats[i];
+            option.text  = dateFormats[i];
+
+            select.add(option);
+        }
+    }
+
+
     function loadDateFormats()
     {
         return fetch("dateFormats.json",
@@ -433,11 +672,24 @@
             headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
-        .then((modes) =>
+        .then((dates) =>
         {
-            dateFormats = Object.keys(modes);
+            dateFormats = Object.keys(dates);
             populateDateFormats(document.getElementById("dateFormat"));
         });
+    }
+
+
+    function populateAlarmSounds(select)
+    {
+        for (var i = 0; i < alarmSounds.length; i++)
+        {
+            var option = document.createElement("option");
+            option.value = alarmSounds[i];
+            option.text  = alarmSounds[i];
+
+            select.add(option);
+        }
     }
 
 
@@ -449,9 +701,9 @@
             headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
-        .then((modes) =>
+        .then((sounds) =>
         {
-            alarmSounds = Object.keys(modes);
+            alarmSounds = Object.keys(sounds);
             populateAlarmSounds(document.getElementById("alarmSound"));
         });
     }
@@ -477,9 +729,7 @@
             });
         });
 
-        setupAlarms();
-
-        setupSave();
+        setupControlEvents();
     });
 
 </script>

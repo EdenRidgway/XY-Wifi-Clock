@@ -16,6 +16,7 @@
 #include "pitches.h"
 #include "XY-Wifi-Clock.h"
 
+
 // I2C pins, used for TM1650 and DS1307 chips
 const int SCL_PIN = 12;
 const int SDA_PIN = 13;
@@ -40,7 +41,7 @@ Button2 buttonUp, buttonDown, buttonSet, buttonKey;
 
 // external AM/PM LED is soldered between the PIN2 pad and GND
 #define AM_PM_LED_pin   4
-int last_AM_PM_brightness = 0;              // start with AM/PM LED off
+int last_AM_PM_brightness;
 int AM_PM_values[9] =
 {
     0,                                      // LED off
@@ -474,6 +475,7 @@ void setup()
 
     // setup AM/PM LED pin as an output (default to off)
     pinMode(AM_PM_LED_pin, OUTPUT);
+    last_AM_PM_brightness = 0;
     analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
 
     // do a display self-test
@@ -695,8 +697,12 @@ void loop()
     updateCurrentTime();
     yield();
 
-    displayTime();
-    yield();
+    // only if not currently displaying text
+    if (!isTextOnDisplay)
+    {
+        displayTime(currentHour, currentMinute, currentSecond);
+        yield();
+    }
 
     checkAlarms();
     yield();
@@ -938,12 +944,6 @@ void displayAlarms()
     bool noAlarms    = true;
     int  alarmNumber = 0;
 
-    // the four possible alarm time digits
-    uint8_t digit0;
-    uint8_t digit1;
-    uint8_t digit2;
-    uint8_t digit3;
-
     setTextOnDisplay(true);
 
     for (auto& alarm : config.alarms)
@@ -954,27 +954,25 @@ void displayAlarms()
         {
             noAlarms = false;
 
+            last_AM_PM_brightness = 0;
+            analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
+
             display.print("AL ");
             display.println(alarmNumber);
             delay(1500);
 
-            digit0 = alarm.getHour()   / 10;
-            digit1 = alarm.getHour()   % 10;
-            digit2 = alarm.getMinute() / 10;
-            digit3 = alarm.getMinute() % 10;
-            Disp4Seg.setDisplayDigit(digit0, 0);
-            Disp4Seg.setDisplayDigit(digit1, 1);
-            Disp4Seg.setDisplayDigit(digit2, 2, true);
-            Disp4Seg.setDisplayDigit(digit3, 3, true);
+            uint8_t hour   = alarm.getHour();
+            uint8_t minute = alarm.getMinute();
+            displayTime(hour, minute, 0);
             delay(1500);
 
             // blink the time if alarm is for later today or tomorrow
             bool blinkAlarm = false;
-            if (alarm.isForDayOfWeek(currentWeekDay)  &&  (alarm.getHour() >  currentHour))
+            if (alarm.isForDayOfWeek(currentWeekDay)  &&  (hour >  currentHour))
             {
                 blinkAlarm = true;
             }
-            if (alarm.isForDayOfWeek(currentWeekDay)  &&  (alarm.getHour() == currentHour)  &&  (alarm.getMinute() > currentMinute))
+            if (alarm.isForDayOfWeek(currentWeekDay)  &&  (hour == currentHour)  &&  (minute > currentMinute))
             {
                 blinkAlarm = true;
             }
@@ -995,11 +993,10 @@ void displayAlarms()
                     Disp4Seg.setSegments(0, 1);
                     Disp4Seg.setSegments(0, 2);
                     Disp4Seg.setSegments(0, 3);
+                    last_AM_PM_brightness = 0;
+                    analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
                     delay(300);
-                    Disp4Seg.setDisplayDigit(digit0, 0);
-                    Disp4Seg.setDisplayDigit(digit1, 1);
-                    Disp4Seg.setDisplayDigit(digit2, 2, true);
-                    Disp4Seg.setDisplayDigit(digit3, 3, true);
+                    displayTime(hour, minute, 0);
                     delay(300);
                 }
             }
@@ -1317,157 +1314,153 @@ void displayTest()
         for (uint8_t j = 0; j < 4; j++)
         {
             Disp4Seg.setSegments((j == 0) ? 0x7F : 0xFF, j);
-            analogWrite(AM_PM_LED_pin, AM_PM_values[7]);
+            last_AM_PM_brightness = MAX_BRIGHTNESS;
+            analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
         }
         delay(600);
 
         for (uint8_t j = 0; j < 4; j++)
         {
             Disp4Seg.setSegments(0x00, j);
-            analogWrite(AM_PM_LED_pin, AM_PM_values[0]);
+            last_AM_PM_brightness = 0;
+            analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
         }
         delay(300);
     }
 }
 
-// update displayed time
-void displayTime()
+// display a time value
+void displayTime(uint8_t hourValue, uint8_t minuteValue, uint8_t secondValue)
 {
-    // only if not currently displaying text
-    if (!isTextOnDisplay)
+    // the four time digits
+    uint8_t digit0;
+    uint8_t digit1;
+    uint8_t digit2;
+    uint8_t digit3;
+
+    // display the hour digits, converting from 24 hour time to 12 hour time if needed
+    uint8_t temp = hourValue;
+    switch (config.getDisplayModeNumber())
     {
-        // the four time digits
-        uint8_t digit0;
-        uint8_t digit1;
-        uint8_t digit2;
-        uint8_t digit3;
-
-        // display the hour digits, converting from 24 hour time to 12 hour time if needed
-        uint8_t temp = currentHour;
-        switch (config.getDisplayModeNumber())
-        {
-            // 12 hour display modes
-            case TIME_MODE_12_SOLID_COLON:
-            case TIME_MODE_12_SOLID_COLON_AM_LED:
-            case TIME_MODE_12_SOLID_COLON_PM_LED:
-            case TIME_MODE_12_BLINKING_COLON_ALWAYS:
-            case TIME_MODE_12_BLINKING_COLON_AM:
-            case TIME_MODE_12_BLINKING_COLON_PM:
-                if (temp == 0)
-                {
-                    temp = 12;
-                }
-                if (temp >= 13)
-                {
-                    temp -= 12;
-                }
-                digit0 = temp / 10;
-                digit1 = temp % 10;
-                if (digit0 == 0)
-                {
-                    Disp4Seg.setSegments(0, 0);
-                }
-                else
-                {
-                    Disp4Seg.setDisplayDigit(digit0, 0);
-                }
-                break;
-
-            // else must be 24 hour mode
-            default:
-            case TIME_MODE_24_SOLID_COLON:
-            case TIME_MODE_24_BLINKING_COLON:
-                digit0 = currentHour / 10;
-                digit1 = currentHour % 10;
+        // 12 hour display modes
+        case TIME_MODE_12_SOLID_COLON:
+        case TIME_MODE_12_SOLID_COLON_AM_LED:
+        case TIME_MODE_12_SOLID_COLON_PM_LED:
+        case TIME_MODE_12_BLINKING_COLON_ALWAYS:
+        case TIME_MODE_12_BLINKING_COLON_AM:
+        case TIME_MODE_12_BLINKING_COLON_PM:
+            if (temp == 0)
+            {
+                temp = 12;
+            }
+            if (temp >= 13)
+            {
+                temp -= 12;
+            }
+            digit0 = temp / 10;
+            digit1 = temp % 10;
+            if (digit0 == 0)
+            {
+                Disp4Seg.setSegments(0, 0);
+            }
+            else
+            {
                 Disp4Seg.setDisplayDigit(digit0, 0);
-                break;
-        }
-        Disp4Seg.setDisplayDigit(digit1, 1);
+            }
+            break;
 
-        // handle colon
-        bool colonOn = true;
-        switch (config.getDisplayModeNumber())
-        {
-            case TIME_MODE_24_BLINKING_COLON:
-            case TIME_MODE_12_BLINKING_COLON_ALWAYS:
-                if ((currentSecond & 0x01) != 0)
-                {
-                    colonOn = false;
-                }
-                break;
+        // else must be 24 hour mode
+        default:
+        case TIME_MODE_24_SOLID_COLON:
+        case TIME_MODE_24_BLINKING_COLON:
+            digit0 = hourValue / 10;
+            digit1 = hourValue % 10;
+            Disp4Seg.setDisplayDigit(digit0, 0);
+            break;
+    }
+    Disp4Seg.setDisplayDigit(digit1, 1);
 
-            case TIME_MODE_12_BLINKING_COLON_AM:
-                if ((currentHour < 12)  &&  ((currentSecond & 0x01) != 0))
-                {
-                    colonOn = false;
-                }
-                break;
+    // handle colon
+    bool colonOn = true;
+    switch (config.getDisplayModeNumber())
+    {
+        case TIME_MODE_24_BLINKING_COLON:
+        case TIME_MODE_12_BLINKING_COLON_ALWAYS:
+            if ((secondValue & 0x01) != 0)
+            {
+                colonOn = false;
+            }
+            break;
 
-            case TIME_MODE_12_BLINKING_COLON_PM:
-                if ((currentHour >= 12)  &&  ((currentSecond & 0x01) != 0))
-                {
-                    colonOn = false;
-                }
-                break;
-        }
+        case TIME_MODE_12_BLINKING_COLON_AM:
+            if ((hourValue < 12)  &&  ((secondValue & 0x01) != 0))
+            {
+                colonOn = false;
+            }
+            break;
 
-        // display minute digits
-        digit2 = currentMinute / 10;
-        digit3 = currentMinute % 10;
-        Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
-        Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
+        case TIME_MODE_12_BLINKING_COLON_PM:
+            if ((hourValue >= 12)  &&  ((secondValue & 0x01) != 0))
+            {
+                colonOn = false;
+            }
+            break;
+    }
 
-        // handle external AM/PM LED on GPIO4
-        switch (config.getDisplayModeNumber())
-        {
-            case TIME_MODE_12_SOLID_COLON_AM_LED:
-                if (currentHour < 12)
-                {
-                    if (last_AM_PM_brightness != currentBrightness)
-                    {
-                        last_AM_PM_brightness = currentBrightness;
-                        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
-                    }
-                }
-                else
-                {
-                    if (last_AM_PM_brightness != 0)
-                    {
-                        last_AM_PM_brightness = 0;
-                        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
-                    }
-                }
-                break;
+    // display minute digits
+    digit2 = minuteValue / 10;
+    digit3 = minuteValue % 10;
+    Disp4Seg.setDisplayDigit(digit2, 2, colonOn);
+    Disp4Seg.setDisplayDigit(digit3, 3, colonOn);
 
-            case TIME_MODE_12_SOLID_COLON_PM_LED:
-                if (currentHour >= 12)
+    // handle external AM/PM LED on GPIO4
+    switch (config.getDisplayModeNumber())
+    {
+        case TIME_MODE_12_SOLID_COLON_AM_LED:
+            if (hourValue < 12)
+            {
+                if (last_AM_PM_brightness != currentBrightness)
                 {
-                    if (last_AM_PM_brightness != currentBrightness)
-                    {
-                        last_AM_PM_brightness = currentBrightness;
-                        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
-                    }
+                    last_AM_PM_brightness = currentBrightness;
+                    analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
                 }
-                else
-                {
-                    if (last_AM_PM_brightness != 0)
-                    {
-                        last_AM_PM_brightness = 0;
-                        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
-                    }
-                }
-                break;
-
-            default:
+            }
+            else
+            {
                 if (last_AM_PM_brightness != 0)
                 {
                     last_AM_PM_brightness = 0;
                     analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
                 }
-                break;
-        }
+            }
+            break;
 
-        yield();
+        case TIME_MODE_12_SOLID_COLON_PM_LED:
+            if (hourValue >= 12)
+            {
+                if (last_AM_PM_brightness != currentBrightness)
+                {
+                    last_AM_PM_brightness = currentBrightness;
+                    analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
+                }
+            }
+            else
+            {
+                if (last_AM_PM_brightness != 0)
+                {
+                    last_AM_PM_brightness = 0;
+                    analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
+                }
+            }
+            break;
+
+        default:
+            if (last_AM_PM_brightness != 0)
+            {
+                last_AM_PM_brightness = 0;
+                analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
+            }
+            break;
     }
 }
 

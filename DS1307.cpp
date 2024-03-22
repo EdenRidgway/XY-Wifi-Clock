@@ -1,3 +1,6 @@
+#include <Arduino.h>
+#include <sys/time.h>
+
 #include "DS1307.h"
 
 
@@ -9,13 +12,24 @@ int SDApin = -1;
 
 
 // I2C address of DS1307
-const byte DS1307_ADDRESS = (0x68 << 1);
+const uint8_t DS1307_ADDRESS = (0x68 << 1);
+
+// prototypes for local functions
+static void DS1307_BitDelay();
+static void DS1307_Start();
+static void DS1307_Stop();
+static bool DS1307_SendData(uint8_t data);
+static uint8_t DS1307_ReceiveData(bool lastByte);
 
 
-void DS1307_Setup(int scl, int sda)
+//
+// local subroutines
+//
+
+static void DS1307_BitDelay()
 {
-    SCLpin = scl;
-    SDApin = sda;
+    // I2C runs at 100 kHz, 5 uSec is half a bit time
+    delayMicroseconds(5);
 }
 
 
@@ -55,7 +69,7 @@ static void DS1307_Stop()
 }
 
 
-static bool DS1307_SendData(byte data)
+static bool DS1307_SendData(uint8_t data)
 {
     // send 8 bits of data, MSB first
     for (int i = 0; i < 8; i++)
@@ -78,7 +92,7 @@ static bool DS1307_SendData(byte data)
     DS1307_BitDelay();
     digitalWrite(SCLpin, HIGH);
     DS1307_BitDelay();
-    byte ack = digitalRead(SDApin);
+    uint8_t ack = digitalRead(SDApin);
     digitalWrite(SCLpin, LOW);
     DS1307_BitDelay();
     pinMode(SDApin, OUTPUT);
@@ -89,10 +103,10 @@ static bool DS1307_SendData(byte data)
 }
 
 
-static byte DS1307_ReceiveData(bool lastByte)
+static uint8_t DS1307_ReceiveData(bool lastByte)
 {
     // initialize the return data
-    byte data = 0x00;
+    uint8_t data = 0x00;
 
     // set SDA to receive
     digitalWrite(SDApin, HIGH);
@@ -130,10 +144,14 @@ static byte DS1307_ReceiveData(bool lastByte)
 }
 
 
-static void DS1307_BitDelay()
+//
+// global subroutines
+//
+
+void DS1307_Setup(int scl, int sda)
 {
-    // I2C runs at 100 kHz, 5 uSec is half a bit time
-    delayMicroseconds(5);
+    SCLpin = scl;
+    SDApin = sda;
 }
 
 
@@ -147,7 +165,7 @@ void DS1307_ReadTime()
     else
     {
         // DS1307 has 7 registers we are interested in
-        byte registers[7];
+        uint8_t registers[7];
 
         // number of bytes actually read with a successful ACK
         int numBytes = 0;
@@ -232,7 +250,7 @@ void DS1307_WriteTime()
     else
     {
         // DS1307 has 8 registers
-        byte registers[8];
+        uint8_t registers[8];
 
         // get the current time
         time_t rawtime;

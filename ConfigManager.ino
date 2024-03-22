@@ -181,7 +181,7 @@ DynamicJsonDocument convertConfigToJson()
 
         JsonArray daysOfWeek = alarmJson.createNestedArray("daysOfWeek");
 
-        for (byte day = 1; day <= 7; day++)
+        for (uint8_t day = 1; day <= 7; day++)
         {
             bool isDayOfWeekEnabled = alarm.isForDayOfWeek(day);
             daysOfWeek.add(isDayOfWeekEnabled);
