@@ -793,7 +793,7 @@ void timeUpdate()
     updateCurrentTime();
 
     char buffer[80];
-    strftime(buffer, sizeof(buffer), "NTP time update to %A, %d %B %Y, %H:%M:%S", &currentTimeInfo);
+    strftime(buffer, sizeof(buffer), "Time updated from NTP to %A, %d %B %Y, %H:%M:%S", &currentTimeInfo);
     Serial.println(buffer);
 
     DS1307_WriteTime();
@@ -1141,23 +1141,23 @@ void setDisplayBrightness(uint8_t level, bool displayChanges)
 
 void increaseBrightness()
 {
+    Serial.println("Manual brightness increase");
     if (manualBrightness < MAX_BRIGHTNESS)
     {
-        Serial.println("Manual brightness increase");
         manualBrightness += 1;
-        setDisplayBrightness(manualBrightness, true);
     }
+    setDisplayBrightness(manualBrightness, true);
 }
 
 
 void decreaseBrightness()
 {
+    Serial.println("Manual brightness decrease");
     if (manualBrightness > MIN_BRIGHTNESS)
     {
-        Serial.println("Manual brightness decrease");
         manualBrightness -= 1;
-        setDisplayBrightness(manualBrightness, true);
     }
+    setDisplayBrightness(manualBrightness, true);
 }
 
 
@@ -1314,17 +1314,17 @@ void displayTest()
         for (uint8_t j = 0; j < 4; j++)
         {
             Disp4Seg.setSegments((j == 0) ? 0x7F : 0xFF, j);
-            last_AM_PM_brightness = MAX_BRIGHTNESS;
-            analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
         }
+        last_AM_PM_brightness = MAX_BRIGHTNESS;
+        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
         delay(600);
 
         for (uint8_t j = 0; j < 4; j++)
         {
             Disp4Seg.setSegments(0x00, j);
-            last_AM_PM_brightness = 0;
-            analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
         }
+        last_AM_PM_brightness = 0;
+        analogWrite(AM_PM_LED_pin, AM_PM_values[last_AM_PM_brightness]);
         delay(300);
     }
 }

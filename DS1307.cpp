@@ -5,10 +5,10 @@
 
 
 // GPIO pin for software I2C clock
-int SCLpin = -1;
+int clockPin = -1;
 
 // GPIO pin for software I2C data
-int SDApin = -1;
+int dataPin = -1;
 
 
 // I2C address of DS1307
@@ -39,32 +39,28 @@ static void DS1307_Start()
     // since the display update code can't run at the same time as
     // this clock chip code
 
-    digitalWrite(SCLpin, LOW);
+    digitalWrite(clockPin, LOW);
     DS1307_BitDelay();
-    digitalWrite(SDApin, HIGH);
+    digitalWrite(dataPin, HIGH);
     DS1307_BitDelay();
-    digitalWrite(SCLpin, HIGH);
+    digitalWrite(clockPin, HIGH);
     DS1307_BitDelay();
-    digitalWrite(SDApin, LOW);
+    digitalWrite(dataPin, LOW);
     DS1307_BitDelay();
-    digitalWrite(SCLpin, LOW);
+    digitalWrite(clockPin, LOW);
     DS1307_BitDelay();
 }
 
 
 static void DS1307_Stop()
 {
-    digitalWrite(SCLpin, LOW);
+    digitalWrite(clockPin, LOW);
     DS1307_BitDelay();
-    digitalWrite(SDApin, LOW);
+    digitalWrite(dataPin, LOW);
     DS1307_BitDelay();
-    digitalWrite(SCLpin, HIGH);
+    digitalWrite(clockPin, HIGH);
     DS1307_BitDelay();
-    digitalWrite(SDApin, HIGH);
-    DS1307_BitDelay();
-    digitalWrite(SCLpin, LOW);
-    DS1307_BitDelay();
-    digitalWrite(SDApin, LOW);
+    digitalWrite(dataPin, HIGH);
     DS1307_BitDelay();
 }
 
@@ -75,27 +71,27 @@ static bool DS1307_SendData(uint8_t data)
     for (int i = 0; i < 8; i++)
     {
         // write the next bit
-        digitalWrite(SDApin, ((data & 0x80) ? HIGH : LOW));
+        digitalWrite(dataPin, ((data & 0x80) ? HIGH : LOW));
         DS1307_BitDelay();
         data <<= 1;
 
         // generate a clock
-        digitalWrite(SCLpin, HIGH);
+        digitalWrite(clockPin, HIGH);
         DS1307_BitDelay();
-        digitalWrite(SCLpin, LOW);
+        digitalWrite(clockPin, LOW);
         DS1307_BitDelay();
     }
 
     // read the ACK
-    digitalWrite(SDApin, HIGH);
-    pinMode(SDApin, INPUT);
+    digitalWrite(dataPin, HIGH);
+    pinMode(dataPin, INPUT);
     DS1307_BitDelay();
-    digitalWrite(SCLpin, HIGH);
+    digitalWrite(clockPin, HIGH);
     DS1307_BitDelay();
-    uint8_t ack = digitalRead(SDApin);
-    digitalWrite(SCLpin, LOW);
+    uint8_t ack = digitalRead(dataPin);
+    digitalWrite(clockPin, LOW);
     DS1307_BitDelay();
-    pinMode(SDApin, OUTPUT);
+    pinMode(dataPin, OUTPUT);
     DS1307_BitDelay();
 
     //  0x00 = ACK, 0x01 = NACK
@@ -109,8 +105,8 @@ static uint8_t DS1307_ReceiveData(bool lastByte)
     uint8_t data = 0x00;
 
     // set SDA to receive
-    digitalWrite(SDApin, HIGH);
-    pinMode(SDApin, INPUT);
+    digitalWrite(dataPin, HIGH);
+    pinMode(dataPin, INPUT);
     DS1307_BitDelay();
 
     // receive 8 bits of data, MSB first
@@ -118,26 +114,26 @@ static uint8_t DS1307_ReceiveData(bool lastByte)
     {
         data <<= 1;
 
-        digitalWrite(SCLpin, HIGH);
+        digitalWrite(clockPin, HIGH);
         DS1307_BitDelay();
 
-        if (digitalRead(SDApin))
+        if (digitalRead(dataPin))
         {
             data |= 0x01;
         }
 
-        digitalWrite(SCLpin, LOW);
+        digitalWrite(clockPin, LOW);
         DS1307_BitDelay();
     }
 
     // send the ACK
-    pinMode(SDApin, OUTPUT);
+    pinMode(dataPin, OUTPUT);
     DS1307_BitDelay();
-    digitalWrite(SDApin, (lastByte ? HIGH : LOW));
+    digitalWrite(dataPin, (lastByte ? HIGH : LOW));
     DS1307_BitDelay();
-    digitalWrite(SCLpin, HIGH);
+    digitalWrite(clockPin, HIGH);
     DS1307_BitDelay();
-    digitalWrite(SCLpin, LOW);
+    digitalWrite(clockPin, LOW);
     DS1307_BitDelay();
 
     return (data);
@@ -150,15 +146,15 @@ static uint8_t DS1307_ReceiveData(bool lastByte)
 
 void DS1307_Setup(int scl, int sda)
 {
-    SCLpin = scl;
-    SDApin = sda;
+    clockPin = scl;
+    dataPin = sda;
 }
 
 
 void DS1307_ReadTime()
 {
     // make sure DS1307_Setup() was called
-    if ((SCLpin == -1)  ||  (SDApin == -1))
+    if ((clockPin == -1)  ||  (dataPin == -1))
     {
         Serial.println("DS1307_Setup() was not called");
     }
@@ -204,6 +200,7 @@ void DS1307_ReadTime()
         // stop the read
         DS1307_Stop();
 
+        // check result
         if (numBytes != sizeof(registers))
         {
             Serial.print("DS1307 read wrong number of bytes: ");
@@ -233,7 +230,7 @@ void DS1307_ReadTime()
             now = *localtime(&rawtime);
 
             char buffer[80];
-            strftime(buffer, sizeof(buffer), "DS1307 time update to %A, %d %B %Y, %H:%M:%S", &now);
+            strftime(buffer, sizeof(buffer), "Time updated from DS1307 to %A, %d %B %Y, %H:%M:%S", &now);
             Serial.println(buffer);
         }
     }
@@ -243,7 +240,7 @@ void DS1307_ReadTime()
 void DS1307_WriteTime()
 {
     // make sure DS1307_Setup() was called
-    if ((SCLpin == -1)  ||  (SDApin == -1))
+    if ((clockPin == -1)  ||  (dataPin == -1))
     {
         Serial.println("DS1307_Setup() was not called");
     }
@@ -310,6 +307,12 @@ void DS1307_WriteTime()
         {
             Serial.print("DS1307 wrote wrong number of bytes: ");
             Serial.println(numBytes);
+        }
+        else
+        {
+            char buffer[80];
+            strftime(buffer, sizeof(buffer), "DS1307 internal time updated to %A, %d %B %Y, %H:%M:%S", &now);
+            Serial.println(buffer);
         }
     }
 }
